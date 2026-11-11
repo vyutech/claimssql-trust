@@ -75,6 +75,7 @@ class PolicyConfig(BaseModel):
 class BenchmarkConfig(BaseModel):
     split_seed: int
     dev_fraction: float = Field(gt=0, lt=1)
+    composition: dict[str, int] = Field(min_length=1)  # group -> target count
 
 
 class MetricsConfig(BaseModel):

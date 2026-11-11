@@ -1,0 +1,8 @@
+# ClaimsSQL-Trust benchmark questions - written by the project owner.
+#
+# This is the file to edit. The validator only reads it and generates
+# questions.jsonl from it:
+#     python -m claimssql.eval.validate_benchmark --no-split
+#
+# Format and rules: see TEMPLATE.md. Allowed tags: see trap_tags.yaml.
+# Add records below, one list item ("- id: ...") per question.

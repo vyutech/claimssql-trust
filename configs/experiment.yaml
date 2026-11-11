@@ -18,6 +18,14 @@ policy:
 benchmark:
   split_seed: 42                # fixed once; never change after splits are assigned
   dev_fraction: 0.2
+  composition:                  # target number of questions per group (200 in total)
+    easy: 40
+    medium: 40
+    hard: 40
+    T1: 25                      # missing concept
+    T2: 15                      # not in data
+    T3: 25                      # ambiguous
+    T4: 15                      # not a SQL question
 
 metrics:
   rs_penalties: [0, 1, 10]      # c values for the Reliability Score

@@ -1,0 +1,17 @@
+# Allowed trap_tags for benchmark/questions.jsonl: tag -> what it marks.
+# The validator rejects any tag that is not listed here. This is the owner's
+# vocabulary: add, rename or remove tags freely (then re-run the validator).
+multi_year_beneficiary: beneficiary has one row per person per year, so counting rows overcounts people
+claim_segments: a CLM_ID can have two rows (segments) in inpatient_claims and outpatient_claims
+raw_integer_dates: "*_DT columns are YYYYMMDD integers, not dates"
+code_as_text: codes are text and can have leading zeros ('01', not 1)
+column_family: the answer needs several numbered columns (e.g. ICD9_DGNS_CD_1..10)
+coded_flag: a flag whose values are not 0/1 (chronic conditions use 1 = Yes, 2 = No)
+ssa_state_code: state codes are SSA codes, not FIPS codes or state names
+null_handling: NULLs change the answer
+cross_table: needs a join or union across tables
+payment_type: paid vs allowed vs beneficiary-paid amounts
+partial_enrollment: covered fewer than 12 months
+date_basis: answer depends on claim start vs end date
+death_attrition: members who died have no later-year rows
+wide_line_items: carrier LINE_*_1..13 must be added across

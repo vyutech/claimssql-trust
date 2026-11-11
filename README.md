@@ -4,7 +4,16 @@ Measures how often small open LLMs hallucinate SQL on healthcare claims data
 (CMS DE-SynPUF Sample 1), and whether a verification layer lets them abstain
 instead of returning confident wrong answers.
 
-Status: **P2 — schema catalogue**.
+Status: **P3 — benchmark tooling** (questions not written yet).
+
+## Benchmark
+
+The owner writes 200 questions in `benchmark/questions.yaml` (120 answerable with
+gold SQL, 80 infeasible). The validator generates `benchmark/questions.jsonl` from
+it, adding each gold result's hash and the dev/test split. `benchmark/TEMPLATE.md`
+explains the record format and `benchmark/trap_tags.yaml` lists the allowed trap
+tags. Results are compared with `src/claimssql/eval/compare.py`: column names and
+row order are ignored, numbers are rounded to 4 decimal places.
 
 ## Schema catalogue
 
@@ -59,6 +68,8 @@ stay as raw `YYYYMMDD` integers.
 | `python scripts/make_catalogue.py` | P2 | Drafts `schema/catalogue.yaml` from the database, the column profile and the CMS codebook (needs `pip install -e ".[catalogue]"`). Never overwrites an existing catalogue; use `--out` for a fresh draft. |
 | `python -m claimssql.schema.catalogue` | P2 | Validates the catalogue against the database; exit code 1 on mismatches |
 | `python -m claimssql.schema.context_builder` | P2 | Prints the schema context that goes into the prompt, with an approximate token count |
+| `python -m claimssql.eval.validate_benchmark` | P3 | Reads `benchmark/questions.yaml` (never modifies it), checks every record, runs every gold SQL read-only and writes `benchmark/questions.jsonl` with `gold_result_hash` and `split`, plus previews and `benchmark_composition.csv`. `--no-split` while writing questions; `--dry-run` writes nothing. Exit code 1 on invalid records or failing gold SQL. |
+| `python scripts/try_sql.py "SELECT ..."` | P3 | Runs one query read-only and prints the first 20 rows, the row count and the time. `-f query.sql` reads the query from a file. |
 
 ## Repo layout
 
@@ -69,8 +80,9 @@ configs/            models.yaml, experiment.yaml
 data/               raw CMS CSVs and DuckDB files (git-ignored)
 schema/             catalogue.yaml
 docs/               CMS codebook PDF (source of the catalogue descriptions)
-benchmark/          questions.jsonl, template, datasheet
-scripts/            ping_models.py
+benchmark/          questions.yaml (owner-written), questions.jsonl (generated),
+                    TEMPLATE.md, trap_tags.yaml, gold_previews/ (git-ignored)
+scripts/            ping_models.py, make_catalogue.py, try_sql.py
 src/claimssql/
   config.py         loads configs/ and .env
   db/               loading and profiling the claims data

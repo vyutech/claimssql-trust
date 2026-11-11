@@ -17,6 +17,10 @@ def test_repo_configs_load_and_match_spec():
     assert exp.generation.greedy_temperature == 0.0
     assert exp.verify.result_row_cap == 10_000
     assert exp.metrics.rs_penalties == [0, 1, 10]
+    # Benchmark composition in CLAUDE.md: 120 answerable + 80 infeasible.
+    comp = exp.benchmark.composition
+    assert sum(comp.values()) == 200
+    assert comp["easy"] + comp["medium"] + comp["hard"] == 120
 
 
 def test_duplicate_model_keys_rejected():

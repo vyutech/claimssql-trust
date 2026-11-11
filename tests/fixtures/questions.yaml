@@ -1,0 +1,42 @@
+# Dummy records for the validator tests. They are about the made-up fixture
+# data in tests/fixtures/raw and are not benchmark questions.
+- id: F-E1
+  group: easy
+  question: fixture question 1
+  sql: SELECT count(*) FROM beneficiary
+
+- id: F-E2
+  group: easy
+  question: "fixture question 2: with a colon"
+  sql: |
+    SELECT DESYNPUF_ID, year
+    FROM beneficiary   -- comment kept
+    ORDER BY 1, 2
+  tags: [multi_year_beneficiary]
+  notes: keep "this" note
+
+- id: F-M1
+  group: medium
+  question: fixture question 3
+  sql: |
+    SELECT CLM_ID, CLM_PMT_AMT
+    FROM inpatient_claims
+  tags:
+    - claim_segments
+
+- id: F-H1
+  group: hard
+  question: fixture question 4
+  sql: SELECT sum(LINE_NCH_PMT_AMT_1) FROM carrier_claims
+
+- id: F-T1
+  group: T1
+  question: fixture question 5
+  notes: fixture reason
+
+- id: F-T4
+  group: T4
+  question: fixture question 6
+  notes: |
+    fixture reason
+    on two lines
