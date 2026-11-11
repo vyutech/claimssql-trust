@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field, model_validator
 # src/claimssql/config.py -> repo root is two levels above the package.
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_DIR = REPO_ROOT / "configs"
+RESULTS_TABLES_DIR = REPO_ROOT / "results" / "tables"
 
 DEFAULT_OLLAMA_HOST = "http://localhost:11434"
 

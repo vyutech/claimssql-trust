@@ -4,7 +4,7 @@ Measures how often small open LLMs hallucinate SQL on healthcare claims data
 (CMS DE-SynPUF Sample 1), and whether a verification layer lets them abstain
 instead of returning confident wrong answers.
 
-Status: **P0 — project skeleton**.
+Status: **P1 — data load and column profile**.
 
 ## Setup
 
@@ -31,13 +31,23 @@ python scripts/ping_models.py
 
 Download CMS DE-SynPUF Sample 1 into `data/raw/` (beneficiary 2008–2010,
 inpatient, outpatient, carrier 1A + 1B; not the prescription drug file).
-`data/` is git-ignored.
+`data/` is git-ignored. Then build the database and profile it:
+
+```powershell
+python -m claimssql.db.load_synpuf
+python -m claimssql.db.profile
+```
+
+ID and code columns are loaded as text so leading zeros survive; `*_DT` columns
+stay as raw `YYYYMMDD` integers.
 
 ## Command-line tools
 
 | Command | Phase | What it does |
 |---|---|---|
 | `python scripts/ping_models.py` | P0 | Sends one tiny JSON-mode prompt to every model in `configs/models.yaml` |
+| `python -m claimssql.db.load_synpuf` | P1 | Builds `data/claims.duckdb` (4 tables) from `data/raw/`; writes `row_counts.csv` and `load_checks.csv` to `results/tables/`. Safe to re-run. |
+| `python -m claimssql.db.profile` | P1 | Writes `column_profile.csv` and `low_cardinality_values.json` to `results/tables/` |
 
 ## Repo layout
 

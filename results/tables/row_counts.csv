@@ -1,0 +1,5 @@
+table,row_count,column_count
+beneficiary,343644,33
+inpatient_claims,66773,81
+outpatient_claims,790790,76
+carrier_claims,4741335,142

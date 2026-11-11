@@ -1,0 +1,13 @@
+check,table,key,value
+rows,beneficiary,2008,116352
+distinct_desynpuf_id,beneficiary,2008,116352
+rows,beneficiary,2009,114538
+distinct_desynpuf_id,beneficiary,2009,114538
+rows,beneficiary,2010,112754
+distinct_desynpuf_id,beneficiary,2010,112754
+distinct_clm_id,inpatient_claims,,66705
+clm_ids_with_multiple_rows,inpatient_claims,,68
+max_rows_per_clm_id,inpatient_claims,,2
+distinct_clm_id,outpatient_claims,,779815
+clm_ids_with_multiple_rows,outpatient_claims,,10975
+max_rows_per_clm_id,outpatient_claims,,2
