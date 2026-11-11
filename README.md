@@ -4,7 +4,15 @@ Measures how often small open LLMs hallucinate SQL on healthcare claims data
 (CMS DE-SynPUF Sample 1), and whether a verification layer lets them abstain
 instead of returning confident wrong answers.
 
-Status: **P1 — data load and column profile**.
+Status: **P2 — schema catalogue**.
+
+## Schema catalogue
+
+`schema/catalogue.yaml` describes every table and column. Descriptions and code
+meanings are taken from the official
+[CMS Linkable 2008–2010 Medicare DE-SynPUF Codebook](https://www.cms.gov/files/document/de-10-codebook.pdf-0)
+(copy in `docs/de-10-codebook.pdf`) and reviewed by the project owner, who also
+writes the `notes` fields. Notes are not shown to the models.
 
 ## Setup
 
@@ -48,6 +56,9 @@ stay as raw `YYYYMMDD` integers.
 | `python scripts/ping_models.py` | P0 | Sends one tiny JSON-mode prompt to every model in `configs/models.yaml` |
 | `python -m claimssql.db.load_synpuf` | P1 | Builds `data/claims.duckdb` (4 tables) from `data/raw/`; writes `row_counts.csv` and `load_checks.csv` to `results/tables/`. Safe to re-run. |
 | `python -m claimssql.db.profile` | P1 | Writes `column_profile.csv` and `low_cardinality_values.json` to `results/tables/` |
+| `python scripts/make_catalogue.py` | P2 | Drafts `schema/catalogue.yaml` from the database, the column profile and the CMS codebook (needs `pip install -e ".[catalogue]"`). Never overwrites an existing catalogue; use `--out` for a fresh draft. |
+| `python -m claimssql.schema.catalogue` | P2 | Validates the catalogue against the database; exit code 1 on mismatches |
+| `python -m claimssql.schema.context_builder` | P2 | Prints the schema context that goes into the prompt, with an approximate token count |
 
 ## Repo layout
 
@@ -57,12 +68,13 @@ Most folders are empty until their phase is built.
 configs/            models.yaml, experiment.yaml
 data/               raw CMS CSVs and DuckDB files (git-ignored)
 schema/             catalogue.yaml
+docs/               CMS codebook PDF (source of the catalogue descriptions)
 benchmark/          questions.jsonl, template, datasheet
 scripts/            ping_models.py
 src/claimssql/
   config.py         loads configs/ and .env
   db/               loading and profiling the claims data
-  schema/           catalogue loader, context builder
+  schema/           codebook parser, catalogue draft/loader/validator, context builder
   llm/              Ollama and Groq clients, disk cache
   generate/         prompts, generator
   verify/           schema check, dry run, self-consistency

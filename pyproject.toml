@@ -27,6 +27,8 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest", "ruff"]
+# Only scripts/make_catalogue.py needs this, to read the CMS codebook PDF.
+catalogue = ["pypdf"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

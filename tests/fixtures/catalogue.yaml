@@ -1,0 +1,43 @@
+# Small made-up catalogue for tests. It describes the two-table database that
+# tests/test_schema.py creates, not the real claims data.
+source:
+  title: Test codebook
+tables:
+  - name: person
+    grain: one row per person per year
+    description: Made-up people.
+    columns:
+      - name: ID
+        type: VARCHAR
+        description: Person identifier
+      - name: SEX_CD
+        type: VARCHAR
+        description: Sex
+        codes: {1: Male, 2: Female}   # unquoted keys on purpose: must load as text
+        notes: SECRET TRAP NOTE
+      - name: BIRTH_DT
+        type: BIGINT
+        description: Date of birth
+      - name: year
+        type: INTEGER
+        description:                  # left empty on purpose
+  - name: claim
+    grain: one row per claim
+    description: Made-up claims.
+    columns:
+      - name: ID
+        type: VARCHAR
+        description: Person identifier
+      - name: CLM_ID
+        type: VARCHAR
+        description: Claim ID
+      - name: DGNS_CD_1..3
+        type: VARCHAR
+        description: Diagnosis Code
+      - name: AMT
+        type: DOUBLE
+        description: Payment amount
+      - name: EMPTY_CD
+        type: VARCHAR
+        description: Always empty
+        include: false
