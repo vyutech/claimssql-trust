@@ -19,6 +19,8 @@ from pydantic import BaseModel, Field, model_validator
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_DIR = REPO_ROOT / "configs"
 RESULTS_TABLES_DIR = REPO_ROOT / "results" / "tables"
+RESULTS_RUNS_DIR = REPO_ROOT / "results" / "runs"
+CACHE_DIR = REPO_ROOT / "results" / "cache"
 
 DEFAULT_OLLAMA_HOST = "http://localhost:11434"
 
@@ -27,6 +29,8 @@ class ModelConfig(BaseModel):
     key: str = Field(min_length=1)
     provider: Literal["ollama", "groq"]
     model: str = Field(min_length=1)
+    # Per-model call settings (think, num_ctx, reasoning_effort, max_tokens).
+    options: dict[str, bool | int | float | str] = Field(default_factory=dict)
 
 
 class ModelsConfig(BaseModel):

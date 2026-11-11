@@ -1,12 +1,22 @@
 # The ONLY place model names live. Code refers to models by `key`.
 # provider: ollama (local) | groq (OpenAI-compatible API)
+#
+# options are the per-model settings decided in P0 ("Model settings" in the spec).
+# They are part of the cache key, so changing one never reuses old answers.
+#   think             (ollama) false = no reasoning phase before the answer
+#   num_ctx           (ollama) context window in tokens; the schema prompt is ~2,800
+#   reasoning_effort  (groq)   how much hidden reasoning the model may do
+#   max_tokens        cap on generated tokens per call (for groq this includes reasoning)
 models:
   - key: qwen
     provider: ollama
     model: "qwen3.5:4b"
+    options: {think: false, num_ctx: 8192, max_tokens: 600}
   - key: gemma
     provider: ollama
     model: "gemma4:e4b"
+    options: {think: false, num_ctx: 8192, max_tokens: 600}
   - key: groq
     provider: groq
     model: "openai/gpt-oss-20b"
+    options: {reasoning_effort: low, max_tokens: 1500}

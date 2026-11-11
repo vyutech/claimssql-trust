@@ -4,7 +4,7 @@ Measures how often small open LLMs hallucinate SQL on healthcare claims data
 (CMS DE-SynPUF Sample 1), and whether a verification layer lets them abstain
 instead of returning confident wrong answers.
 
-Status: **P3 — benchmark tooling** (questions not written yet).
+Status: **P4 — generation** (LLM clients, cache, prompts, generator).
 
 ## Benchmark
 
@@ -58,6 +58,19 @@ python -m claimssql.db.profile
 ID and code columns are loaded as text so leading zeros survive; `*_DT` columns
 stay as raw `YYYYMMDD` integers.
 
+## Generation
+
+For each question and model the generator makes 7 calls: one with the `forced`
+prompt (must write SQL), one with the `abstain` prompt (may refuse), both at
+temperature 0, and 5 sampled `abstain` calls at temperature 0.7. Replies are JSON:
+`{"answerable", "sql", "confidence", "reason"}`. A reply that cannot be parsed gets
+one retry, then counts as `PARSE_ERROR`.
+
+Every call goes through a disk cache in `results/cache/` (git-ignored), keyed by
+provider, model, prompt version, messages, temperature, seed and the model's
+options in `configs/models.yaml`. Re-running costs no calls. Changing any prompt
+text requires bumping `PROMPT_VERSION` in `src/claimssql/generate/prompts.py`.
+
 ## Command-line tools
 
 | Command | Phase | What it does |
@@ -70,6 +83,7 @@ stay as raw `YYYYMMDD` integers.
 | `python -m claimssql.schema.context_builder` | P2 | Prints the schema context that goes into the prompt, with an approximate token count |
 | `python -m claimssql.eval.validate_benchmark` | P3 | Reads `benchmark/questions.yaml` (never modifies it), checks every record, runs every gold SQL read-only and writes `benchmark/questions.jsonl` with `gold_result_hash` and `split`, plus previews and `benchmark_composition.csv`. `--no-split` while writing questions; `--dry-run` writes nothing. Exit code 1 on invalid records or failing gold SQL. |
 | `python scripts/try_sql.py "SELECT ..."` | P3 | Runs one query read-only and prints the first 20 rows, the row count and the time. `-f query.sql` reads the query from a file. |
+| `python scripts/smoke_generate.py` | P4 | Runs the first 10 questions of `questions.jsonl` on every model (7 calls per question per model), writes `results/runs/smoke.jsonl` and prints cache hits/misses, calls and average seconds per call. `--n`, `--models`, `--question "..."`. Resumable through the disk cache. |
 
 ## Repo layout
 
@@ -82,7 +96,7 @@ schema/             catalogue.yaml
 docs/               CMS codebook PDF (source of the catalogue descriptions)
 benchmark/          questions.yaml (owner-written), questions.jsonl (generated),
                     TEMPLATE.md, trap_tags.yaml, gold_previews/ (git-ignored)
-scripts/            ping_models.py, make_catalogue.py, try_sql.py
+scripts/            ping_models.py, make_catalogue.py, try_sql.py, smoke_generate.py
 src/claimssql/
   config.py         loads configs/ and .env
   db/               loading and profiling the claims data
