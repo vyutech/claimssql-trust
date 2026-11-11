@@ -1,0 +1,12 @@
+# The ONLY place model names live. Code refers to models by `key`.
+# provider: ollama (local) | groq (OpenAI-compatible API)
+models:
+  - key: qwen
+    provider: ollama
+    model: "qwen3.5:4b"
+  - key: gemma
+    provider: ollama
+    model: "gemma4:e4b"
+  - key: groq
+    provider: groq
+    model: "openai/gpt-oss-20b"

@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "claimssql"
+version = "0.1.0"
+description = "ClaimsSQL-Trust: abstention-aware Text-to-SQL on healthcare claims data"
+readme = "README.md"
+# Spec targets 3.11; developed on 3.14 (owner's decision, P0).
+requires-python = ">=3.11"
+authors = [{ name = "Vyshnavi Vadla" }]
+dependencies = [
+    "duckdb",
+    "sqlglot",
+    "httpx",
+    "pyyaml",
+    "python-dotenv",
+    "pydantic>=2",
+    "fastapi",
+    "uvicorn",
+    "streamlit",
+    "pandas",
+    "scikit-learn",
+    "matplotlib",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests", "scripts", "app"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
