@@ -4,7 +4,7 @@ Measures how often small open LLMs hallucinate SQL on healthcare claims data
 (CMS DE-SynPUF Sample 1), and whether a verification layer lets them abstain
 instead of returning confident wrong answers.
 
-Status: **P4 — generation** (LLM clients, cache, prompts, generator).
+Status: **P5 — verification** (V1 schema check, V2 dry run, V3 self-consistency, decision rules).
 
 ## Benchmark
 
@@ -71,6 +71,33 @@ provider, model, prompt version, messages, temperature, seed and the model's
 options in `configs/models.yaml`. Re-running costs no calls. Changing any prompt
 text requires bumping `PROMPT_VERSION` in `src/claimssql/generate/prompts.py`.
 
+## Verification and the answer/abstain decision
+
+Three verifiers look at the SQL a model wrote (`src/claimssql/verify/`):
+
+- **V1 schema check** parses the SQL without running it and reports tables and
+  columns that are not in the catalogue. Names the query defines itself (CTEs,
+  aliases, subquery columns) are not errors.
+- **V2 dry run** accepts only a single read-only query, runs it on a read-only
+  connection with a timeout, and classifies any error (parse, binder, catalog,
+  conversion, timeout, other, forbidden).
+- **V3 self-consistency** runs the 5 sampled queries and groups them by result.
+  Agreement is the size of the largest group divided by 5.
+
+`src/claimssql/policy/decide.py` turns one logged record into a decision for
+each configuration, without calling the model again:
+
+| Config | Answers when |
+|---|---|
+| C0 | the `forced` prompt produced SQL |
+| C1 | the `abstain` prompt produced SQL (the model did not refuse) |
+| C2 | C1 and V1 passes |
+| C3 | C2 and V2 passes |
+| C4 | C3, the greedy result is in the largest V3 group, and agreement ≥ τ |
+
+Otherwise it abstains with one reason code: `MODEL_REFUSED`, `SCHEMA_UNKNOWN`,
+`EXEC_ERROR`, `LOW_AGREEMENT` or `PARSE_ERROR`.
+
 ## Command-line tools
 
 | Command | Phase | What it does |
@@ -84,6 +111,7 @@ text requires bumping `PROMPT_VERSION` in `src/claimssql/generate/prompts.py`.
 | `python -m claimssql.eval.validate_benchmark` | P3 | Reads `benchmark/questions.yaml` (never modifies it), checks every record, runs every gold SQL read-only and writes `benchmark/questions.jsonl` with `gold_result_hash` and `split`, plus previews and `benchmark_composition.csv`. `--no-split` while writing questions; `--dry-run` writes nothing. Exit code 1 on invalid records or failing gold SQL. |
 | `python scripts/try_sql.py "SELECT ..."` | P3 | Runs one query read-only and prints the first 20 rows, the row count and the time. `-f query.sql` reads the query from a file; `--vertical` prints each row as `column: value` lines for wide tables. |
 | `python scripts/smoke_generate.py` | P4 | Runs the first 10 questions of `questions.jsonl` on every model (7 calls per question per model), writes `results/runs/smoke.jsonl` and prints cache hits/misses, calls and average seconds per call. `--n`, `--models`, `--question "..."`. Resumable through the disk cache. |
+| `python -m claimssql.verify.schema_check` | P5 | Runs the schema check (V1) on every gold query in `questions.jsonl`. All must pass; a failure would be a false positive in V1. Exit code 1 if any fails. |
 
 ## Repo layout
 
