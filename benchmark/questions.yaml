@@ -1,8 +1,2351 @@
-# ClaimsSQL-Trust benchmark questions - written by the project owner.
-#
-# This is the file to edit. The validator only reads it and generates
-# questions.jsonl from it:
-#     python -m claimssql.eval.validate_benchmark --no-split
-#
-# Format and rules: see TEMPLATE.md. Allowed tags: see trap_tags.yaml.
-# Add records below, one list item ("- id: ...") per question.
+# ClaimsSQL-Trust — answerable questions (easy, medium, hard), 120 total
+# Drafted with AI help. Owner must run, check and reword each before keeping it.
+# REPLACE the whole content of benchmark/questions.yaml with this file.
+# v3: top-N queries have tie-breakers.
+# v2: payment questions now sum per claim, so dateless segment-2 rows are not dropped.
+
+- id: E-001
+  group: easy
+  question: How many members are in the 2009 data?
+  sql: |-
+    SELECT COUNT(*)
+    FROM beneficiary
+    WHERE year = 2009;
+  tags: [multi_year_beneficiary]
+  notes: One row per member per year, so the year filter is required.
+
+- id: E-002
+  group: easy
+  question: How many female members were there in 2008?
+  sql: |-
+    SELECT COUNT(*)
+    FROM beneficiary
+    WHERE year = 2008
+      AND BENE_SEX_IDENT_CD = '2';
+  tags: [code_as_text, multi_year_beneficiary]
+  notes: 'Sex is a text code: ''1'' male, ''2'' female.'
+
+- id: E-003
+  group: easy
+  question: How many members had heart failure in 2010?
+  sql: |-
+    SELECT COUNT(*)
+    FROM beneficiary
+    WHERE year = 2010
+      AND SP_CHF = 1;
+  tags: [coded_flag, multi_year_beneficiary]
+  notes: Chronic-condition flags use 1 = yes, 2 = no.
+
+- id: E-004
+  group: easy
+  question: How many members had COPD in 2008?
+  sql: |-
+    SELECT COUNT(*)
+    FROM beneficiary
+    WHERE year = 2008
+      AND SP_COPD = 1;
+  tags: [coded_flag, multi_year_beneficiary]
+  notes: 1 = yes, 2 = no.
+
+- id: E-005
+  group: easy
+  question: How many members were living with depression in 2009?
+  sql: |-
+    SELECT COUNT(*)
+    FROM beneficiary
+    WHERE year = 2009
+      AND SP_DEPRESSN = 1;
+  tags: [coded_flag, multi_year_beneficiary]
+  notes: 1 = yes, 2 = no.
+
+- id: E-006
+  group: easy
+  question: How many members had osteoporosis in 2008?
+  sql: |-
+    SELECT COUNT(*)
+    FROM beneficiary
+    WHERE year = 2008
+      AND SP_OSTEOPRS = 1;
+  tags: [coded_flag, multi_year_beneficiary]
+  notes: 1 = yes, 2 = no.
+
+- id: E-007
+  group: easy
+  question: How many members had end-stage renal disease in 2008?
+  sql: |-
+    SELECT COUNT(*)
+    FROM beneficiary
+    WHERE year = 2008
+      AND BENE_ESRD_IND = 'Y';
+  tags: [code_as_text, multi_year_beneficiary]
+  notes: 'ESRD indicator is text: ''Y'' or ''0''.'
+
+- id: E-008
+  group: easy
+  question: How many Hispanic members were there in 2009?
+  sql: |-
+    SELECT COUNT(*)
+    FROM beneficiary
+    WHERE year = 2009
+      AND BENE_RACE_CD = '5';
+  tags: [code_as_text, multi_year_beneficiary]
+  notes: Race code '5' = Hispanic (check catalogue).
+
+- id: E-009
+  group: easy
+  question: How many members died during 2009?
+  sql: |-
+    SELECT COUNT(DISTINCT DESYNPUF_ID)
+    FROM beneficiary
+    WHERE BENE_DEATH_DT BETWEEN 20090101 AND 20091231;
+  tags: [raw_integer_dates, death_attrition, multi_year_beneficiary]
+  notes: Dates are YYYYMMDD integers; count distinct members in case the date repeats across year rows.
+
+- id: E-010
+  group: easy
+  question: How many different members appear across all three years?
+  sql: |-
+    SELECT COUNT(DISTINCT DESYNPUF_ID)
+    FROM beneficiary;
+  tags: [multi_year_beneficiary]
+  notes: COUNT(*) would count member-years, not members.
+
+- id: E-011
+  group: easy
+  question: In 2008, how many members have no death date recorded?
+  sql: |-
+    SELECT COUNT(*)
+    FROM beneficiary
+    WHERE year = 2008
+      AND BENE_DEATH_DT IS NULL;
+  tags: [null_handling, multi_year_beneficiary]
+  notes: Missing death date means the member was alive.
+
+- id: E-012
+  group: easy
+  question: How many 2008 members were born before 1930?
+  sql: |-
+    SELECT COUNT(*)
+    FROM beneficiary
+    WHERE year = 2008
+      AND BENE_BIRTH_DT < 19300101;
+  tags: [raw_integer_dates, multi_year_beneficiary]
+  notes: Birth date is a YYYYMMDD integer.
+
+- id: E-013
+  group: easy
+  question: What is the earliest birth date of any member?
+  sql: |-
+    SELECT MIN(BENE_BIRTH_DT)
+    FROM beneficiary;
+  tags: [raw_integer_dates]
+  notes: Answer is a YYYYMMDD integer.
+
+- id: E-014
+  group: easy
+  question: How many members spent at least one month in an HMO in 2008?
+  sql: |-
+    SELECT COUNT(*)
+    FROM beneficiary
+    WHERE year = 2008
+      AND BENE_HMO_CVRAGE_TOT_MONS > 0;
+  tags: [partial_enrollment, multi_year_beneficiary]
+  notes: HMO coverage months range 0-12.
+
+- id: E-015
+  group: easy
+  question: How many members had Part B coverage for the whole of 2009?
+  sql: |-
+    SELECT COUNT(*)
+    FROM beneficiary
+    WHERE year = 2009
+      AND BENE_SMI_CVRAGE_TOT_MONS = 12;
+  tags: [partial_enrollment, multi_year_beneficiary]
+  notes: SMI = Part B; full year = 12 months.
+
+- id: E-016
+  group: easy
+  question: How many members had less than a full year of Part A coverage in 2010?
+  sql: |-
+    SELECT COUNT(*)
+    FROM beneficiary
+    WHERE year = 2010
+      AND BENE_HI_CVRAGE_TOT_MONS < 12;
+  tags: [partial_enrollment, multi_year_beneficiary]
+  notes: HI = Part A.
+
+- id: E-017
+  group: easy
+  question: How many members lived in California in 2009?
+  sql: |-
+    SELECT COUNT(*)
+    FROM beneficiary
+    WHERE year = 2009
+      AND SP_STATE_CODE = '05';
+  tags: [ssa_state_code, code_as_text, multi_year_beneficiary]
+  notes: State codes are SSA codes stored as text; California = '05' (verify in catalogue).
+
+- id: E-018
+  group: easy
+  question: How many members lived in Texas in 2010?
+  sql: |-
+    SELECT COUNT(*)
+    FROM beneficiary
+    WHERE year = 2010
+      AND SP_STATE_CODE = '45';
+  tags: [ssa_state_code, code_as_text, multi_year_beneficiary]
+  notes: Texas = '45' in SSA codes (verify in catalogue).
+
+- id: E-019
+  group: easy
+  question: According to the member summaries, what was total Medicare inpatient reimbursement in 2008?
+  sql: |-
+    SELECT SUM(MEDREIMB_IP)
+    FROM beneficiary
+    WHERE year = 2008;
+  tags: [payment_type, multi_year_beneficiary]
+  notes: Yearly summary amount, not summed claims.
+
+- id: E-020
+  group: easy
+  question: On average, how much did members pay themselves for outpatient care in 2009?
+  sql: |-
+    SELECT AVG(BENRES_OP)
+    FROM beneficiary
+    WHERE year = 2009;
+  tags: [payment_type, multi_year_beneficiary]
+  notes: BENRES = beneficiary responsibility, not Medicare payment.
+
+- id: E-021
+  group: easy
+  question: What was total Medicare carrier reimbursement in 2010 for members with cancer?
+  sql: |-
+    SELECT SUM(MEDREIMB_CAR)
+    FROM beneficiary
+    WHERE year = 2010
+      AND SP_CNCR = 1;
+  tags: [coded_flag, payment_type, multi_year_beneficiary]
+  notes: Cancer flag 1 = yes.
+
+- id: E-022
+  group: easy
+  question: How many hospital stays are there in total?
+  sql: |-
+    SELECT COUNT(DISTINCT CLM_ID)
+    FROM inpatient_claims;
+  tags: [claim_segments]
+  notes: Some claims have two segment rows; COUNT(*) overcounts.
+
+- id: E-023
+  group: easy
+  question: How many hospital stays started in 2010?
+  sql: |-
+    SELECT COUNT(DISTINCT CLM_ID)
+    FROM inpatient_claims
+    WHERE CLM_FROM_DT BETWEEN 20100101 AND 20101231;
+  tags: [claim_segments, date_basis, raw_integer_dates]
+  notes: Uses claim start date.
+
+- id: E-024
+  group: easy
+  question: How many hospital stays began in December 2008?
+  sql: |-
+    SELECT COUNT(DISTINCT CLM_ID)
+    FROM inpatient_claims
+    WHERE CLM_FROM_DT BETWEEN 20081201 AND 20081231;
+  tags: [claim_segments, raw_integer_dates]
+  notes: Date range on YYYYMMDD integers.
+
+- id: E-025
+  group: easy
+  question: What is the highest Medicare payment on a single inpatient claim record?
+  sql: |-
+    SELECT MAX(CLM_PMT_AMT)
+    FROM inpatient_claims;
+  tags: [payment_type]
+  notes: Per claim row (segment).
+
+- id: E-026
+  group: easy
+  question: What is the longest hospital stay, in days?
+  sql: |-
+    SELECT MAX(CLM_UTLZTN_DAY_CNT)
+    FROM inpatient_claims;
+  tags: []
+  notes: Utilization day count.
+
+- id: E-027
+  group: easy
+  question: How many hospital stays lasted more than 10 days?
+  sql: |-
+    SELECT COUNT(DISTINCT CLM_ID)
+    FROM inpatient_claims
+    WHERE CLM_UTLZTN_DAY_CNT > 10;
+  tags: [claim_segments]
+  notes: Count distinct claims.
+
+- id: E-028
+  group: easy
+  question: How many different DRG codes appear on hospital claims?
+  sql: |-
+    SELECT COUNT(DISTINCT CLM_DRG_CD)
+    FROM inpatient_claims;
+  tags: [null_handling]
+  notes: COUNT(DISTINCT) skips NULL; includes the 'OTH' value.
+
+- id: E-029
+  group: easy
+  question: How many different hospitals submitted inpatient claims?
+  sql: |-
+    SELECT COUNT(DISTINCT PRVDR_NUM)
+    FROM inpatient_claims;
+  tags: []
+  notes: Provider number identifies the facility.
+
+- id: E-030
+  group: easy
+  question: How many inpatient claim records are missing a start date?
+  sql: |-
+    SELECT COUNT(*)
+    FROM inpatient_claims
+    WHERE CLM_FROM_DT IS NULL;
+  tags: [null_handling, claim_segments]
+  notes: 'These are segment-2 rows: only segment 1 carries the dates.'
+
+- id: E-031
+  group: easy
+  question: How many hospital stays were admitted for heart failure?
+  sql: |-
+    SELECT COUNT(DISTINCT CLM_ID)
+    FROM inpatient_claims
+    WHERE ADMTNG_ICD9_DGNS_CD LIKE '428%';
+  tags: [code_as_text, claim_segments]
+  notes: ICD-9 heart failure codes start with 428, stored without a dot.
+
+- id: E-032
+  group: easy
+  question: In total, how much did other primary payers pay on inpatient claims?
+  sql: |-
+    SELECT SUM(NCH_PRMRY_PYR_CLM_PD_AMT)
+    FROM inpatient_claims;
+  tags: [payment_type]
+  notes: Primary payer amount, not Medicare's payment.
+
+- id: E-033
+  group: easy
+  question: How many outpatient visits started in 2008?
+  sql: |-
+    SELECT COUNT(DISTINCT CLM_ID)
+    FROM outpatient_claims
+    WHERE CLM_FROM_DT BETWEEN 20080101 AND 20081231;
+  tags: [claim_segments, date_basis, raw_integer_dates]
+  notes: Outpatient claims also have segment rows.
+
+- id: E-034
+  group: easy
+  question: What did Medicare pay in total for outpatient claims starting in 2010?
+  sql: |-
+    WITH c AS (
+      SELECT CLM_ID, DESYNPUF_ID,
+             MIN(CLM_FROM_DT) AS start_dt,
+             SUM(CLM_PMT_AMT) AS paid
+      FROM outpatient_claims
+      GROUP BY CLM_ID, DESYNPUF_ID
+    )
+    SELECT SUM(paid)
+    FROM c
+    WHERE start_dt BETWEEN 20100101 AND 20101231;
+  tags: [payment_type, raw_integer_dates, date_basis, claim_segments, null_handling]
+  notes: Filtering rows by date would drop segment-2 payments. Segment-2 rows have no dates but carry payments, so amounts are summed per claim before filtering on the claim's start date.
+
+- id: E-035
+  group: easy
+  question: How many outpatient claims had a Medicare payment of zero?
+  sql: |-
+    SELECT COUNT(DISTINCT CLM_ID)
+    FROM outpatient_claims
+    WHERE CLM_PMT_AMT = 0;
+  tags: [claim_segments]
+  notes: Counts claims with at least one zero-payment row.
+
+- id: E-036
+  group: easy
+  question: What is the largest single outpatient claim payment?
+  sql: |-
+    SELECT MAX(CLM_PMT_AMT)
+    FROM outpatient_claims;
+  tags: [payment_type]
+  notes: Per claim row.
+
+- id: E-037
+  group: easy
+  question: How much did members pay in total in Part B deductibles on outpatient claims?
+  sql: |-
+    SELECT SUM(NCH_BENE_PTB_DDCTBL_AMT)
+    FROM outpatient_claims;
+  tags: [payment_type]
+  notes: Member-paid deductible, not Medicare payment.
+
+- id: E-038
+  group: easy
+  question: How many doctor claims started in 2009?
+  sql: |-
+    SELECT COUNT(DISTINCT CLM_ID)
+    FROM carrier_claims
+    WHERE CLM_FROM_DT BETWEEN 20090101 AND 20091231;
+  tags: [raw_integer_dates]
+  notes: Carrier = physician/supplier claims.
+
+- id: E-039
+  group: easy
+  question: How many doctor claims list diabetes as the first diagnosis?
+  sql: |-
+    SELECT COUNT(*)
+    FROM carrier_claims
+    WHERE ICD9_DGNS_CD_1 LIKE '250%';
+  tags: [code_as_text]
+  notes: ICD-9 diabetes codes start with 250.
+
+- id: E-040
+  group: easy
+  question: How many different physicians performed the first service line on doctor claims?
+  sql: |-
+    SELECT COUNT(DISTINCT PRF_PHYSN_NPI_1)
+    FROM carrier_claims;
+  tags: [null_handling]
+  notes: Distinct NPIs on line 1; NULLs ignored.
+
+- id: M-001
+  group: medium
+  question: How many members lived in each state in 2008?
+  sql: |-
+    SELECT SP_STATE_CODE, COUNT(*) AS members
+    FROM beneficiary
+    WHERE year = 2008
+    GROUP BY SP_STATE_CODE
+    ORDER BY SP_STATE_CODE;
+  tags: [ssa_state_code, multi_year_beneficiary]
+  notes: One row per state code; codes are SSA codes, not names.
+
+- id: M-002
+  group: medium
+  question: How many male and female members were there in each year?
+  sql: |-
+    SELECT year, BENE_SEX_IDENT_CD, COUNT(*) AS members
+    FROM beneficiary
+    GROUP BY year, BENE_SEX_IDENT_CD
+    ORDER BY year, BENE_SEX_IDENT_CD;
+  tags: [code_as_text]
+  notes: Sex is a text code.
+
+- id: M-003
+  group: medium
+  question: How many members had diabetes in each year from 2008 to 2010?
+  sql: |-
+    SELECT year, COUNT(*) AS members
+    FROM beneficiary
+    WHERE SP_DIABETES = 1
+    GROUP BY year
+    ORDER BY year;
+  tags: [coded_flag]
+  notes: 1 = yes, 2 = no.
+
+- id: M-004
+  group: medium
+  question: How many members had both diabetes and heart failure in 2009?
+  sql: |-
+    SELECT COUNT(*)
+    FROM beneficiary
+    WHERE year = 2009
+      AND SP_DIABETES = 1
+      AND SP_CHF = 1;
+  tags: [coded_flag, multi_year_beneficiary]
+  notes: Both flags must equal 1.
+
+- id: M-005
+  group: medium
+  question: Which 5 states had the most members with COPD in 2010?
+  sql: |-
+    SELECT SP_STATE_CODE, COUNT(*) AS members
+    FROM beneficiary
+    WHERE year = 2010
+      AND SP_COPD = 1
+    GROUP BY SP_STATE_CODE
+    ORDER BY members DESC, SP_STATE_CODE
+    LIMIT 5;
+  tags: [coded_flag, ssa_state_code, multi_year_beneficiary]
+  notes: Top 5 by member count. Ties broken by code so the answer is deterministic.
+
+- id: M-006
+  group: medium
+  question: What was the average Medicare inpatient reimbursement per member for each race in 2008?
+  sql: |-
+    SELECT BENE_RACE_CD, AVG(MEDREIMB_IP) AS avg_reimb
+    FROM beneficiary
+    WHERE year = 2008
+    GROUP BY BENE_RACE_CD
+    ORDER BY BENE_RACE_CD;
+  tags: [code_as_text, payment_type, multi_year_beneficiary]
+  notes: Race is a text code; MEDREIMB is Medicare's amount.
+
+- id: M-007
+  group: medium
+  question: How many 2009 members turned 85 or older during 2009?
+  sql: |-
+    SELECT COUNT(*)
+    FROM beneficiary
+    WHERE year = 2009
+      AND 2009 - BENE_BIRTH_DT // 10000 >= 85;
+  tags: [raw_integer_dates, multi_year_beneficiary]
+  notes: Birth year = BENE_BIRTH_DT // 10000; age reached in 2009.
+
+- id: M-008
+  group: medium
+  question: What was the average age reached in 2010 by members with ESRD?
+  sql: |-
+    SELECT AVG(2010 - BENE_BIRTH_DT // 10000)
+    FROM beneficiary
+    WHERE year = 2010
+      AND BENE_ESRD_IND = 'Y';
+  tags: [raw_integer_dates, code_as_text, multi_year_beneficiary]
+  notes: ESRD indicator 'Y'.
+
+- id: M-009
+  group: medium
+  question: How many members had full-year Part A and Part B coverage in 2009?
+  sql: |-
+    SELECT COUNT(*)
+    FROM beneficiary
+    WHERE year = 2009
+      AND BENE_HI_CVRAGE_TOT_MONS = 12
+      AND BENE_SMI_CVRAGE_TOT_MONS = 12;
+  tags: [partial_enrollment, multi_year_beneficiary]
+  notes: HI = Part A, SMI = Part B.
+
+- id: M-010
+  group: medium
+  question: How many members appear in the 2008 data but not in the 2010 data?
+  sql: |-
+    SELECT COUNT(*)
+    FROM (
+      SELECT DESYNPUF_ID FROM beneficiary WHERE year = 2008
+      EXCEPT
+      SELECT DESYNPUF_ID FROM beneficiary WHERE year = 2010
+    );
+  tags: [death_attrition, multi_year_beneficiary]
+  notes: Members leave mainly through death.
+
+- id: M-011
+  group: medium
+  question: How many members lived in a different state in 2009 than in 2008?
+  sql: |-
+    SELECT COUNT(*)
+    FROM beneficiary a
+    JOIN beneficiary b
+      ON a.DESYNPUF_ID = b.DESYNPUF_ID
+    WHERE a.year = 2008
+      AND b.year = 2009
+      AND a.SP_STATE_CODE <> b.SP_STATE_CODE;
+  tags: [multi_year_beneficiary, ssa_state_code]
+  notes: Self-join across years.
+
+- id: M-012
+  group: medium
+  question: How many hospital stays started in each year?
+  sql: |-
+    SELECT CLM_FROM_DT // 10000 AS start_year, COUNT(DISTINCT CLM_ID) AS stays
+    FROM inpatient_claims
+    WHERE CLM_FROM_DT IS NOT NULL
+    GROUP BY start_year
+    ORDER BY start_year;
+  tags: [claim_segments, raw_integer_dates, date_basis, null_handling]
+  notes: Includes a small 2007 group for stays that began before the data period.
+
+- id: M-013
+  group: medium
+  question: What was total Medicare inpatient payment for each year that stays started?
+  sql: |-
+    WITH c AS (
+      SELECT CLM_ID, DESYNPUF_ID,
+             MIN(CLM_FROM_DT) AS start_dt,
+             SUM(CLM_PMT_AMT) AS paid
+      FROM inpatient_claims
+      GROUP BY CLM_ID, DESYNPUF_ID
+    )
+    SELECT start_dt // 10000 AS start_year, SUM(paid) AS total_paid
+    FROM c
+    WHERE start_dt IS NOT NULL
+    GROUP BY start_year
+    ORDER BY start_year;
+  tags: [payment_type, date_basis, raw_integer_dates, claim_segments, null_handling]
+  notes: Grouped by claim start year. Segment-2 rows have no dates but carry payments, so amounts are summed per claim before filtering on the claim's start date.
+
+- id: M-014
+  group: medium
+  question: What is the average Medicare payment per hospital stay?
+  sql: |-
+    SELECT AVG(total_paid)
+    FROM (
+      SELECT CLM_ID, SUM(CLM_PMT_AMT) AS total_paid
+      FROM inpatient_claims
+      GROUP BY CLM_ID
+    );
+  tags: [claim_segments, payment_type]
+  notes: Sum segment rows per claim first, then average.
+
+- id: M-015
+  group: medium
+  question: What was the average length of a hospital stay for each start year?
+  sql: |-
+    SELECT start_year, AVG(days) AS avg_days
+    FROM (
+      SELECT CLM_ID,
+             MIN(CLM_FROM_DT) // 10000 AS start_year,
+             SUM(CLM_UTLZTN_DAY_CNT) AS days
+      FROM inpatient_claims
+      GROUP BY CLM_ID
+    )
+    WHERE start_year IS NOT NULL
+    GROUP BY start_year
+    ORDER BY start_year;
+  tags: [claim_segments, date_basis]
+  notes: Assumes segment rows split the days of one stay; owner to verify on a two-segment claim.
+
+- id: M-016
+  group: medium
+  question: How many hospital stays started in each month of 2009?
+  sql: |-
+    SELECT (CLM_FROM_DT // 100) % 100 AS month, COUNT(DISTINCT CLM_ID) AS stays
+    FROM inpatient_claims
+    WHERE CLM_FROM_DT BETWEEN 20090101 AND 20091231
+    GROUP BY month
+    ORDER BY month;
+  tags: [raw_integer_dates, claim_segments]
+  notes: Month extracted from a YYYYMMDD integer.
+
+- id: M-017
+  group: medium
+  question: Which 5 DRG codes had the most hospital stays?
+  sql: |-
+    SELECT CLM_DRG_CD, COUNT(DISTINCT CLM_ID) AS stays
+    FROM inpatient_claims
+    WHERE CLM_DRG_CD IS NOT NULL
+    GROUP BY CLM_DRG_CD
+    ORDER BY stays DESC, CLM_DRG_CD
+    LIMIT 5;
+  tags: [claim_segments, null_handling]
+  notes: Counts distinct claims per DRG. Ties broken by code so the answer is deterministic.
+
+- id: M-018
+  group: medium
+  question: Which 10 hospitals received the most Medicare inpatient payment?
+  sql: |-
+    SELECT PRVDR_NUM, SUM(CLM_PMT_AMT) AS total_paid
+    FROM inpatient_claims
+    GROUP BY PRVDR_NUM
+    ORDER BY total_paid DESC, PRVDR_NUM
+    LIMIT 10;
+  tags: [payment_type]
+  notes: Ranked by Medicare payment. Ties broken by code so the answer is deterministic.
+
+- id: M-019
+  group: medium
+  question: What were the 5 most common admitting diagnoses?
+  sql: |-
+    SELECT ADMTNG_ICD9_DGNS_CD, COUNT(DISTINCT CLM_ID) AS stays
+    FROM inpatient_claims
+    WHERE ADMTNG_ICD9_DGNS_CD IS NOT NULL
+    GROUP BY ADMTNG_ICD9_DGNS_CD
+    ORDER BY stays DESC, ADMTNG_ICD9_DGNS_CD
+    LIMIT 5;
+  tags: [code_as_text, null_handling, claim_segments]
+  notes: ICD-9 codes as text. Ties broken by code so the answer is deterministic.
+
+- id: M-020
+  group: medium
+  question: Among DRGs with at least 50 stays, which has the longest average stay?
+  sql: |-
+    SELECT drg, AVG(days) AS avg_days
+    FROM (
+      SELECT CLM_ID,
+             MIN(CLM_DRG_CD) AS drg,
+             SUM(CLM_UTLZTN_DAY_CNT) AS days
+      FROM inpatient_claims
+      GROUP BY CLM_ID
+    )
+    WHERE drg IS NOT NULL
+    GROUP BY drg
+    HAVING COUNT(*) >= 50
+    ORDER BY avg_days DESC, drg
+    LIMIT 1;
+  tags: [claim_segments, null_handling]
+  notes: Per-claim days first, then HAVING on stay count. Ties broken by code so the answer is deterministic.
+
+- id: M-021
+  group: medium
+  question: How many hospital stays started before 2008?
+  sql: |-
+    SELECT COUNT(DISTINCT CLM_ID)
+    FROM inpatient_claims
+    WHERE CLM_FROM_DT < 20080101;
+  tags: [date_basis, raw_integer_dates, claim_segments]
+  notes: Some stays began in late 2007 and ended in 2008.
+
+- id: M-022
+  group: medium
+  question: How many hospital stays were admitted in one year and discharged in the next?
+  sql: |-
+    SELECT COUNT(DISTINCT CLM_ID)
+    FROM inpatient_claims
+    WHERE CLM_ADMSN_DT // 10000 < NCH_BENE_DSCHRG_DT // 10000;
+  tags: [date_basis, raw_integer_dates, claim_segments]
+  notes: Year boundary crossings.
+
+- id: M-023
+  group: medium
+  question: What was the average member inpatient deductible per hospital stay, for each start year 2008-2010?
+  sql: |-
+    WITH c AS (
+      SELECT CLM_ID, DESYNPUF_ID,
+             MIN(CLM_FROM_DT) AS start_dt,
+             SUM(NCH_BENE_IP_DDCTBL_AMT) AS deductible,
+             SUM(CLM_PMT_AMT) AS paid
+      FROM inpatient_claims
+      GROUP BY CLM_ID, DESYNPUF_ID
+    )
+    SELECT start_dt // 10000 AS start_year, AVG(deductible) AS avg_deductible
+    FROM c
+    WHERE start_dt BETWEEN 20080101 AND 20101231
+    GROUP BY start_year
+    ORDER BY start_year;
+  tags: [payment_type, date_basis, claim_segments, null_handling]
+  notes: Member-paid deductible per stay. Segment-2 rows have no dates but carry payments, so amounts are summed per claim before filtering on the claim's start date.
+
+- id: M-024
+  group: medium
+  question: For each year 2008-2010, how many hospital stays had a payment from another primary payer?
+  sql: |-
+    WITH c AS (
+      SELECT CLM_ID, DESYNPUF_ID,
+             MIN(CLM_FROM_DT) AS start_dt,
+             SUM(NCH_PRMRY_PYR_CLM_PD_AMT) AS primary_paid,
+             SUM(CLM_PMT_AMT) AS paid
+      FROM inpatient_claims
+      GROUP BY CLM_ID, DESYNPUF_ID
+    )
+    SELECT start_dt // 10000 AS start_year, COUNT(*) AS stays
+    FROM c
+    WHERE primary_paid > 0
+      AND start_dt BETWEEN 20080101 AND 20101231
+    GROUP BY start_year
+    ORDER BY start_year;
+  tags: [payment_type, claim_segments, date_basis, null_handling]
+  notes: Primary payer amount summed per claim. Segment-2 rows have no dates but carry payments, so amounts are summed per claim before filtering on the claim's start date.
+
+- id: M-025
+  group: medium
+  question: How many different attending physicians treated hospital patients in 2010?
+  sql: |-
+    SELECT COUNT(DISTINCT AT_PHYSN_NPI)
+    FROM inpatient_claims
+    WHERE CLM_FROM_DT BETWEEN 20100101 AND 20101231;
+  tags: [null_handling, date_basis]
+  notes: Distinct NPIs; NULLs ignored.
+
+- id: M-026
+  group: medium
+  question: How many members had at least one hospital stay starting in 2009?
+  sql: |-
+    SELECT COUNT(DISTINCT DESYNPUF_ID)
+    FROM inpatient_claims
+    WHERE CLM_FROM_DT BETWEEN 20090101 AND 20091231;
+  tags: [date_basis]
+  notes: Distinct members, not claims.
+
+- id: M-027
+  group: medium
+  question: How many members had 3 or more outpatient visits starting in 2010?
+  sql: |-
+    SELECT COUNT(*)
+    FROM (
+      SELECT DESYNPUF_ID
+      FROM outpatient_claims
+      WHERE CLM_FROM_DT BETWEEN 20100101 AND 20101231
+      GROUP BY DESYNPUF_ID
+      HAVING COUNT(DISTINCT CLM_ID) >= 3
+    );
+  tags: [claim_segments, date_basis]
+  notes: Visits counted as distinct claims.
+
+- id: M-028
+  group: medium
+  question: For each year 2008-2010, how many outpatient visits listed essential hypertension as the first diagnosis?
+  sql: |-
+    SELECT CLM_FROM_DT // 10000 AS start_year, COUNT(DISTINCT CLM_ID) AS visits
+    FROM outpatient_claims
+    WHERE ICD9_DGNS_CD_1 = '4019'
+      AND CLM_FROM_DT BETWEEN 20080101 AND 20101231
+    GROUP BY start_year
+    ORDER BY start_year;
+  tags: [code_as_text, claim_segments]
+  notes: ICD-9 401.9 stored as '4019'.
+
+- id: M-029
+  group: medium
+  question: How many members had both a hospital stay and an outpatient visit starting in 2008?
+  sql: |-
+    SELECT COUNT(*)
+    FROM (
+      SELECT DESYNPUF_ID FROM inpatient_claims
+      WHERE CLM_FROM_DT BETWEEN 20080101 AND 20081231
+      INTERSECT
+      SELECT DESYNPUF_ID FROM outpatient_claims
+      WHERE CLM_FROM_DT BETWEEN 20080101 AND 20081231
+    );
+  tags: [cross_table, date_basis]
+  notes: Members present in both claim types.
+
+- id: M-030
+  group: medium
+  question: On average, how many doctor claims did each 2008 member have that year?
+  sql: |-
+    SELECT
+      (SELECT COUNT(DISTINCT CLM_ID) FROM carrier_claims
+       WHERE CLM_FROM_DT BETWEEN 20080101 AND 20081231) * 1.0
+      /
+      (SELECT COUNT(*) FROM beneficiary WHERE year = 2008);
+  tags: [cross_table, multi_year_beneficiary]
+  notes: Claims divided by all 2008 members, including those with no claims.
+
+- id: M-031
+  group: medium
+  question: What was the average Medicare payment per 2009 hospital stay for members with heart failure?
+  sql: |-
+    WITH c AS (
+      SELECT CLM_ID, DESYNPUF_ID,
+             MIN(CLM_FROM_DT) AS start_dt,
+             SUM(CLM_PMT_AMT) AS paid
+      FROM inpatient_claims
+      GROUP BY CLM_ID, DESYNPUF_ID
+    )
+    SELECT AVG(c.paid)
+    FROM c
+    JOIN beneficiary b
+      ON b.DESYNPUF_ID = c.DESYNPUF_ID
+     AND b.year = 2009
+    WHERE b.SP_CHF = 1
+      AND c.start_dt BETWEEN 20090101 AND 20091231;
+  tags: [cross_table, multi_year_beneficiary, claim_segments, coded_flag, null_handling]
+  notes: Join must include year, or each claim matches up to 3 member rows. Segment-2 rows have no dates but carry payments, so amounts are summed per claim before filtering on the claim's start date.
+
+- id: M-032
+  group: medium
+  question: How many hospital stays starting in 2010 were for female members?
+  sql: |-
+    SELECT COUNT(DISTINCT i.CLM_ID)
+    FROM inpatient_claims i
+    JOIN beneficiary b
+      ON b.DESYNPUF_ID = i.DESYNPUF_ID
+     AND b.year = 2010
+    WHERE b.BENE_SEX_IDENT_CD = '2'
+      AND i.CLM_FROM_DT BETWEEN 20100101 AND 20101231;
+  tags: [cross_table, code_as_text, multi_year_beneficiary, claim_segments]
+  notes: Year in the join condition.
+
+- id: M-033
+  group: medium
+  question: What was total Medicare outpatient payment in 2008, split by member sex?
+  sql: |-
+    WITH c AS (
+      SELECT CLM_ID, DESYNPUF_ID,
+             MIN(CLM_FROM_DT) AS start_dt,
+             SUM(CLM_PMT_AMT) AS paid
+      FROM outpatient_claims
+      GROUP BY CLM_ID, DESYNPUF_ID
+    )
+    SELECT b.BENE_SEX_IDENT_CD, SUM(c.paid) AS total_paid
+    FROM c
+    JOIN beneficiary b
+      ON b.DESYNPUF_ID = c.DESYNPUF_ID
+     AND b.year = 2008
+    WHERE c.start_dt BETWEEN 20080101 AND 20081231
+    GROUP BY b.BENE_SEX_IDENT_CD
+    ORDER BY b.BENE_SEX_IDENT_CD;
+  tags: [cross_table, multi_year_beneficiary, payment_type, claim_segments, null_handling]
+  notes: Joining without year would triple payments. Segment-2 rows have no dates but carry payments, so amounts are summed per claim before filtering on the claim's start date.
+
+- id: M-034
+  group: medium
+  question: Which 5 states had the most outpatient visits starting in 2009?
+  sql: |-
+    SELECT b.SP_STATE_CODE, COUNT(DISTINCT o.CLM_ID) AS visits
+    FROM outpatient_claims o
+    JOIN beneficiary b
+      ON b.DESYNPUF_ID = o.DESYNPUF_ID
+     AND b.year = 2009
+    WHERE o.CLM_FROM_DT BETWEEN 20090101 AND 20091231
+    GROUP BY b.SP_STATE_CODE
+    ORDER BY visits DESC, b.SP_STATE_CODE
+    LIMIT 5;
+  tags: [cross_table, ssa_state_code, multi_year_beneficiary, claim_segments]
+  notes: State taken from the 2009 member row. Ties broken by code so the answer is deterministic.
+
+- id: M-035
+  group: medium
+  question: How many members with diabetes in 2008 had no hospital stay starting that year?
+  sql: |-
+    SELECT COUNT(*)
+    FROM beneficiary b
+    WHERE b.year = 2008
+      AND b.SP_DIABETES = 1
+      AND NOT EXISTS (
+        SELECT 1 FROM inpatient_claims i
+        WHERE i.DESYNPUF_ID = b.DESYNPUF_ID
+          AND i.CLM_FROM_DT BETWEEN 20080101 AND 20081231
+      );
+  tags: [cross_table, coded_flag, multi_year_beneficiary]
+  notes: Anti-join with NOT EXISTS.
+
+- id: M-036
+  group: medium
+  question: How many members who died in 2009 had a hospital stay starting in 2009?
+  sql: |-
+    SELECT COUNT(DISTINCT b.DESYNPUF_ID)
+    FROM beneficiary b
+    WHERE b.BENE_DEATH_DT BETWEEN 20090101 AND 20091231
+      AND EXISTS (
+        SELECT 1 FROM inpatient_claims i
+        WHERE i.DESYNPUF_ID = b.DESYNPUF_ID
+          AND i.CLM_FROM_DT BETWEEN 20090101 AND 20091231
+      );
+  tags: [death_attrition, cross_table, raw_integer_dates]
+  notes: Distinct members.
+
+- id: M-037
+  group: medium
+  question: How many members with less than 12 months of Part A in 2008 had a hospital stay that year?
+  sql: |-
+    SELECT COUNT(*)
+    FROM beneficiary b
+    WHERE b.year = 2008
+      AND b.BENE_HI_CVRAGE_TOT_MONS < 12
+      AND EXISTS (
+        SELECT 1 FROM inpatient_claims i
+        WHERE i.DESYNPUF_ID = b.DESYNPUF_ID
+          AND i.CLM_FROM_DT BETWEEN 20080101 AND 20081231
+      );
+  tags: [partial_enrollment, cross_table, multi_year_beneficiary]
+  notes: Partial-year Part A members.
+
+- id: M-038
+  group: medium
+  question: What did Medicare pay in total for 2010 outpatient visits by members with depression?
+  sql: |-
+    WITH c AS (
+      SELECT CLM_ID, DESYNPUF_ID,
+             MIN(CLM_FROM_DT) AS start_dt,
+             SUM(CLM_PMT_AMT) AS paid
+      FROM outpatient_claims
+      GROUP BY CLM_ID, DESYNPUF_ID
+    )
+    SELECT SUM(c.paid)
+    FROM c
+    JOIN beneficiary b
+      ON b.DESYNPUF_ID = c.DESYNPUF_ID
+     AND b.year = 2010
+    WHERE b.SP_DEPRESSN = 1
+      AND c.start_dt BETWEEN 20100101 AND 20101231;
+  tags: [cross_table, coded_flag, multi_year_beneficiary, payment_type, claim_segments, null_handling]
+  notes: Year in the join. Segment-2 rows have no dates but carry payments, so amounts are summed per claim before filtering on the claim's start date.
+
+- id: M-039
+  group: medium
+  question: What was the average age at admission for hospital stays admitted in 2009?
+  sql: |-
+    SELECT AVG(i.CLM_ADMSN_DT // 10000 - b.BENE_BIRTH_DT // 10000)
+    FROM (
+      SELECT DISTINCT CLM_ID, DESYNPUF_ID, CLM_ADMSN_DT
+      FROM inpatient_claims
+      WHERE CLM_ADMSN_DT BETWEEN 20090101 AND 20091231
+    ) i
+    JOIN beneficiary b
+      ON b.DESYNPUF_ID = i.DESYNPUF_ID
+     AND b.year = 2009;
+  tags: [raw_integer_dates, cross_table, multi_year_beneficiary, claim_segments]
+  notes: Age in whole years by calendar year; one row per stay.
+
+- id: M-040
+  group: medium
+  question: How many members with ESRD in 2010 had at least one outpatient visit that year?
+  sql: |-
+    SELECT COUNT(*)
+    FROM beneficiary b
+    WHERE b.year = 2010
+      AND b.BENE_ESRD_IND = 'Y'
+      AND EXISTS (
+        SELECT 1 FROM outpatient_claims o
+        WHERE o.DESYNPUF_ID = b.DESYNPUF_ID
+          AND o.CLM_FROM_DT BETWEEN 20100101 AND 20101231
+      );
+  tags: [code_as_text, cross_table, multi_year_beneficiary]
+  notes: EXISTS avoids double counting.
+
+- id: H-001
+  group: hard
+  question: What share of hospital stays discharged in 2009 were followed by another admission within 30 days?
+  sql: |-
+    WITH stays AS (
+      SELECT CLM_ID, DESYNPUF_ID,
+             MIN(PRVDR_NUM) AS prov,
+             try_strptime(CAST(MIN(CLM_ADMSN_DT) AS VARCHAR), '%Y%m%d')::DATE AS admit,
+             try_strptime(CAST(MAX(NCH_BENE_DSCHRG_DT) AS VARCHAR), '%Y%m%d')::DATE AS disch
+      FROM inpatient_claims
+      WHERE CLM_ADMSN_DT IS NOT NULL AND NCH_BENE_DSCHRG_DT IS NOT NULL
+      GROUP BY CLM_ID, DESYNPUF_ID
+    ),
+    nxt AS (
+      SELECT *, LEAD(admit) OVER (PARTITION BY DESYNPUF_ID ORDER BY admit, CLM_ID) AS next_admit
+      FROM stays
+    )
+    SELECT AVG(CASE WHEN date_diff('day', disch, next_admit) BETWEEN 0 AND 30 THEN 1.0 ELSE 0.0 END) AS readmit_rate
+    FROM nxt
+    WHERE year(disch) = 2009;
+  tags: [raw_integer_dates, claim_segments]
+  notes: Dates converted from YYYYMMDD; one row per claim; index = discharge in 2009.
+
+- id: H-002
+  group: hard
+  question: Among hospitals with at least 100 stays, which 5 have the highest 30-day readmission rate?
+  sql: |-
+    WITH stays AS (
+      SELECT CLM_ID, DESYNPUF_ID,
+             MIN(PRVDR_NUM) AS prov,
+             try_strptime(CAST(MIN(CLM_ADMSN_DT) AS VARCHAR), '%Y%m%d')::DATE AS admit,
+             try_strptime(CAST(MAX(NCH_BENE_DSCHRG_DT) AS VARCHAR), '%Y%m%d')::DATE AS disch
+      FROM inpatient_claims
+      WHERE CLM_ADMSN_DT IS NOT NULL AND NCH_BENE_DSCHRG_DT IS NOT NULL
+      GROUP BY CLM_ID, DESYNPUF_ID
+    ),
+    nxt AS (
+      SELECT *, LEAD(admit) OVER (PARTITION BY DESYNPUF_ID ORDER BY admit, CLM_ID) AS next_admit
+      FROM stays
+    )
+    SELECT prov,
+           AVG(CASE WHEN date_diff('day', disch, next_admit) BETWEEN 0 AND 30 THEN 1.0 ELSE 0.0 END) AS readmit_rate
+    FROM nxt
+    GROUP BY prov
+    HAVING COUNT(*) >= 100
+    ORDER BY readmit_rate DESC, prov
+    LIMIT 5;
+  tags: [raw_integer_dates, claim_segments]
+  notes: Readmission attributed to the hospital of the first stay.
+
+- id: H-003
+  group: hard
+  question: What is the longest gap, in days, between a discharge and the same member's next admission?
+  sql: |-
+    WITH stays AS (
+      SELECT CLM_ID, DESYNPUF_ID,
+             MIN(PRVDR_NUM) AS prov,
+             try_strptime(CAST(MIN(CLM_ADMSN_DT) AS VARCHAR), '%Y%m%d')::DATE AS admit,
+             try_strptime(CAST(MAX(NCH_BENE_DSCHRG_DT) AS VARCHAR), '%Y%m%d')::DATE AS disch
+      FROM inpatient_claims
+      WHERE CLM_ADMSN_DT IS NOT NULL AND NCH_BENE_DSCHRG_DT IS NOT NULL
+      GROUP BY CLM_ID, DESYNPUF_ID
+    ),
+    gaps AS (
+      SELECT date_diff('day', LAG(disch) OVER (PARTITION BY DESYNPUF_ID ORDER BY admit, CLM_ID), admit) AS gap_days
+      FROM stays
+    )
+    SELECT MAX(gap_days) FROM gaps;
+  tags: [raw_integer_dates, claim_segments]
+  notes: LAG over each member's stays.
+
+- id: H-004
+  group: hard
+  question: For members with two or more hospital stays, what is the average number of days between their first and second admission?
+  sql: |-
+    WITH stays AS (
+      SELECT CLM_ID, DESYNPUF_ID,
+             MIN(PRVDR_NUM) AS prov,
+             try_strptime(CAST(MIN(CLM_ADMSN_DT) AS VARCHAR), '%Y%m%d')::DATE AS admit,
+             try_strptime(CAST(MAX(NCH_BENE_DSCHRG_DT) AS VARCHAR), '%Y%m%d')::DATE AS disch
+      FROM inpatient_claims
+      WHERE CLM_ADMSN_DT IS NOT NULL AND NCH_BENE_DSCHRG_DT IS NOT NULL
+      GROUP BY CLM_ID, DESYNPUF_ID
+    ),
+    ranked AS (
+      SELECT DESYNPUF_ID, admit,
+             ROW_NUMBER() OVER (PARTITION BY DESYNPUF_ID ORDER BY admit, CLM_ID) AS rn
+      FROM stays
+    ),
+    pairs AS (
+      SELECT DESYNPUF_ID,
+             MAX(CASE WHEN rn = 1 THEN admit END) AS first_admit,
+             MAX(CASE WHEN rn = 2 THEN admit END) AS second_admit
+      FROM ranked
+      GROUP BY DESYNPUF_ID
+    )
+    SELECT AVG(date_diff('day', first_admit, second_admit))
+    FROM pairs
+    WHERE second_admit IS NOT NULL;
+  tags: [raw_integer_dates, claim_segments]
+  notes: ROW_NUMBER then pivot.
+
+- id: H-005
+  group: hard
+  question: How many members had at least one hospital stay starting in each of 2008, 2009 and 2010?
+  sql: |-
+    SELECT COUNT(*)
+    FROM (
+      SELECT DESYNPUF_ID
+      FROM inpatient_claims
+      WHERE CLM_FROM_DT BETWEEN 20080101 AND 20101231
+      GROUP BY DESYNPUF_ID
+      HAVING COUNT(DISTINCT CLM_FROM_DT // 10000) = 3
+    );
+  tags: [date_basis, raw_integer_dates]
+  notes: Three distinct start years.
+
+- id: H-006
+  group: hard
+  question: By what percentage did total Medicare inpatient payment change from 2008 to 2009, and from 2009 to 2010?
+  sql: |-
+    WITH c AS (
+      SELECT CLM_ID, DESYNPUF_ID,
+             MIN(CLM_FROM_DT) AS start_dt,
+             MIN(CLM_DRG_CD) AS drg,
+             SUM(CLM_PMT_AMT) AS paid
+      FROM inpatient_claims
+      GROUP BY CLM_ID, DESYNPUF_ID
+    ),
+    t AS (
+      SELECT start_dt // 10000 AS start_year, SUM(paid) AS total_paid
+      FROM c
+      WHERE start_dt BETWEEN 20080101 AND 20101231
+      GROUP BY start_year
+    )
+    SELECT start_year,
+           100.0 * (total_paid - LAG(total_paid) OVER (ORDER BY start_year))
+                 / LAG(total_paid) OVER (ORDER BY start_year) AS pct_change
+    FROM t
+    ORDER BY start_year;
+  tags: [payment_type, date_basis, claim_segments, null_handling]
+  notes: Segment-2 rows have no date but carry payments, so payments are summed per claim before filtering by the claim's start date. 2008 row has NULL change.
+
+- id: H-007
+  group: hard
+  question: How many members had higher Medicare inpatient reimbursement in each successive year from 2008 to 2010?
+  sql: |-
+    WITH p AS (
+      SELECT DESYNPUF_ID,
+             MAX(CASE WHEN year = 2008 THEN MEDREIMB_IP END) AS y2008,
+             MAX(CASE WHEN year = 2009 THEN MEDREIMB_IP END) AS y2009,
+             MAX(CASE WHEN year = 2010 THEN MEDREIMB_IP END) AS y2010
+      FROM beneficiary
+      GROUP BY DESYNPUF_ID
+    )
+    SELECT COUNT(*)
+    FROM p
+    WHERE y2008 < y2009 AND y2009 < y2010;
+  tags: [multi_year_beneficiary, death_attrition, payment_type]
+  notes: Members missing a year are excluded automatically.
+
+- id: H-008
+  group: hard
+  question: What was the median Medicare payment per hospital stay for each start year 2008-2010?
+  sql: |-
+    WITH s AS (
+      SELECT CLM_ID, MIN(CLM_FROM_DT) // 10000 AS start_year, SUM(CLM_PMT_AMT) AS total_paid
+      FROM inpatient_claims
+      GROUP BY CLM_ID
+    )
+    SELECT start_year, MEDIAN(total_paid) AS median_paid
+    FROM s
+    WHERE start_year BETWEEN 2008 AND 2010
+    GROUP BY start_year
+    ORDER BY start_year;
+  tags: [claim_segments, payment_type]
+  notes: Sum segments per claim, then median.
+
+- id: H-009
+  group: hard
+  question: What was the running total of Medicare inpatient payment by month in 2009?
+  sql: |-
+    WITH c AS (
+      SELECT CLM_ID, DESYNPUF_ID,
+             MIN(CLM_FROM_DT) AS start_dt,
+             MIN(CLM_DRG_CD) AS drg,
+             SUM(CLM_PMT_AMT) AS paid
+      FROM inpatient_claims
+      GROUP BY CLM_ID, DESYNPUF_ID
+    ),
+    m AS (
+      SELECT (start_dt // 100) % 100 AS month, SUM(paid) AS paid
+      FROM c
+      WHERE start_dt BETWEEN 20090101 AND 20091231
+      GROUP BY month
+    )
+    SELECT month, SUM(paid) OVER (ORDER BY month) AS running_total
+    FROM m
+    ORDER BY month;
+  tags: [raw_integer_dates, payment_type, claim_segments, null_handling]
+  notes: Per-claim totals so segment-2 payments are kept.
+
+- id: H-010
+  group: hard
+  question: In 2009, which month had the largest increase in outpatient visits compared with the previous month?
+  sql: |-
+    WITH m AS (
+      SELECT (CLM_FROM_DT // 100) % 100 AS month, COUNT(DISTINCT CLM_ID) AS visits
+      FROM outpatient_claims
+      WHERE CLM_FROM_DT BETWEEN 20090101 AND 20091231
+      GROUP BY month
+    ),
+    d AS (
+      SELECT month, visits - LAG(visits) OVER (ORDER BY month) AS change
+      FROM m
+    )
+    SELECT month, change
+    FROM d
+    WHERE change IS NOT NULL
+    ORDER BY change DESC, month
+    LIMIT 1;
+  tags: [claim_segments, raw_integer_dates]
+  notes: LAG on monthly counts. Ties broken by code so the answer is deterministic.
+
+- id: H-011
+  group: hard
+  question: For each year 2008-2010, which 3 DRGs had the highest total Medicare payment?
+  sql: |-
+    WITH c AS (
+      SELECT CLM_ID, DESYNPUF_ID,
+             MIN(CLM_FROM_DT) AS start_dt,
+             MIN(CLM_DRG_CD) AS drg,
+             SUM(CLM_PMT_AMT) AS paid
+      FROM inpatient_claims
+      GROUP BY CLM_ID, DESYNPUF_ID
+    ),
+    t AS (
+      SELECT start_dt // 10000 AS start_year, drg, SUM(paid) AS paid
+      FROM c
+      WHERE start_dt BETWEEN 20080101 AND 20101231
+        AND drg IS NOT NULL
+      GROUP BY start_year, drg
+    ),
+    r AS (
+      SELECT *, ROW_NUMBER() OVER (PARTITION BY start_year ORDER BY paid DESC, drg) AS rn
+      FROM t
+    )
+    SELECT start_year, drg, paid
+    FROM r
+    WHERE rn <= 3
+    ORDER BY start_year, rn;
+  tags: [payment_type, null_handling, claim_segments]
+  notes: Per-claim totals; window ranking per year.
+
+- id: H-012
+  group: hard
+  question: Among members with a 2009 hospital stay, what share of 2009 inpatient payment went to the top 1% of those members?
+  sql: |-
+    WITH c AS (
+      SELECT CLM_ID, DESYNPUF_ID,
+             MIN(CLM_FROM_DT) AS start_dt,
+             MIN(CLM_DRG_CD) AS drg,
+             SUM(CLM_PMT_AMT) AS paid
+      FROM inpatient_claims
+      GROUP BY CLM_ID, DESYNPUF_ID
+    ),
+    m AS (
+      SELECT DESYNPUF_ID, SUM(paid) AS paid
+      FROM c
+      WHERE start_dt BETWEEN 20090101 AND 20091231
+      GROUP BY DESYNPUF_ID
+    ),
+    r AS (
+      SELECT paid, NTILE(100) OVER (ORDER BY paid DESC, DESYNPUF_ID) AS pct
+      FROM m
+    )
+    SELECT SUM(CASE WHEN pct = 1 THEN paid ELSE 0 END) / SUM(paid) AS top1_share
+    FROM r;
+  tags: [payment_type, claim_segments, null_handling]
+  notes: Per-claim totals first; NTILE(100) groups members into percentiles. Ties broken by code so the answer is deterministic.
+
+- id: H-013
+  group: hard
+  question: Among members with any 2008 claim, how many had total 2008 Medicare claim payments more than 10 times the average?
+  sql: |-
+    WITH ip AS (
+      SELECT CLM_ID, DESYNPUF_ID, MIN(CLM_FROM_DT) AS start_dt, SUM(CLM_PMT_AMT) AS paid
+      FROM inpatient_claims
+      GROUP BY CLM_ID, DESYNPUF_ID
+    ),
+    op AS (
+      SELECT CLM_ID, DESYNPUF_ID, MIN(CLM_FROM_DT) AS start_dt, SUM(CLM_PMT_AMT) AS paid
+      FROM outpatient_claims
+      GROUP BY CLM_ID, DESYNPUF_ID
+    ),
+    claims AS (
+      SELECT DESYNPUF_ID, paid FROM ip
+      WHERE start_dt BETWEEN 20080101 AND 20081231
+      UNION ALL
+      SELECT DESYNPUF_ID, paid FROM op
+      WHERE start_dt BETWEEN 20080101 AND 20081231
+      UNION ALL
+      SELECT DESYNPUF_ID,
+             COALESCE(LINE_NCH_PMT_AMT_1, 0) + COALESCE(LINE_NCH_PMT_AMT_2, 0) + COALESCE(LINE_NCH_PMT_AMT_3, 0) +
+               COALESCE(LINE_NCH_PMT_AMT_4, 0) + COALESCE(LINE_NCH_PMT_AMT_5, 0) + COALESCE(LINE_NCH_PMT_AMT_6, 0) +
+               COALESCE(LINE_NCH_PMT_AMT_7, 0) + COALESCE(LINE_NCH_PMT_AMT_8, 0) + COALESCE(LINE_NCH_PMT_AMT_9, 0) +
+               COALESCE(LINE_NCH_PMT_AMT_10, 0) + COALESCE(LINE_NCH_PMT_AMT_11, 0) + COALESCE(LINE_NCH_PMT_AMT_12, 0) +
+               COALESCE(LINE_NCH_PMT_AMT_13, 0)
+      FROM carrier_claims
+      WHERE CLM_FROM_DT BETWEEN 20080101 AND 20081231
+    ),
+    m AS (
+      SELECT DESYNPUF_ID, SUM(paid) AS total
+      FROM claims
+      GROUP BY DESYNPUF_ID
+    )
+    SELECT COUNT(*)
+    FROM m
+    WHERE total > 10 * (SELECT AVG(total) FROM m);
+  tags: [cross_table, wide_line_items, payment_type, claim_segments, null_handling]
+  notes: Carrier payment = sum of 13 line payments; inpatient/outpatient payments summed per claim so dateless segment-2 rows are kept.
+
+- id: H-014
+  group: hard
+  question: What is the average Medicare payment per doctor claim, counting all service lines?
+  sql: |-
+    SELECT AVG(
+          COALESCE(LINE_NCH_PMT_AMT_1, 0) + COALESCE(LINE_NCH_PMT_AMT_2, 0) + COALESCE(LINE_NCH_PMT_AMT_3, 0) +
+          COALESCE(LINE_NCH_PMT_AMT_4, 0) + COALESCE(LINE_NCH_PMT_AMT_5, 0) + COALESCE(LINE_NCH_PMT_AMT_6, 0) +
+          COALESCE(LINE_NCH_PMT_AMT_7, 0) + COALESCE(LINE_NCH_PMT_AMT_8, 0) + COALESCE(LINE_NCH_PMT_AMT_9, 0) +
+          COALESCE(LINE_NCH_PMT_AMT_10, 0) + COALESCE(LINE_NCH_PMT_AMT_11, 0) + COALESCE(LINE_NCH_PMT_AMT_12, 0) +
+          COALESCE(LINE_NCH_PMT_AMT_13, 0)
+    )
+    FROM carrier_claims;
+  tags: [wide_line_items, null_handling]
+  notes: Each line can be NULL; COALESCE before adding.
+
+- id: H-015
+  group: hard
+  question: For doctor claims starting in 2009, what were total allowed charges and total Medicare payments?
+  sql: |-
+    SELECT
+      SUM(
+          COALESCE(LINE_ALOWD_CHRG_AMT_1, 0) + COALESCE(LINE_ALOWD_CHRG_AMT_2, 0) + COALESCE(LINE_ALOWD_CHRG_AMT_3, 0) +
+          COALESCE(LINE_ALOWD_CHRG_AMT_4, 0) + COALESCE(LINE_ALOWD_CHRG_AMT_5, 0) + COALESCE(LINE_ALOWD_CHRG_AMT_6, 0) +
+          COALESCE(LINE_ALOWD_CHRG_AMT_7, 0) + COALESCE(LINE_ALOWD_CHRG_AMT_8, 0) + COALESCE(LINE_ALOWD_CHRG_AMT_9, 0) +
+          COALESCE(LINE_ALOWD_CHRG_AMT_10, 0) + COALESCE(LINE_ALOWD_CHRG_AMT_11, 0) + COALESCE(LINE_ALOWD_CHRG_AMT_12, 0) +
+          COALESCE(LINE_ALOWD_CHRG_AMT_13, 0)
+      ) AS allowed,
+      SUM(
+          COALESCE(LINE_NCH_PMT_AMT_1, 0) + COALESCE(LINE_NCH_PMT_AMT_2, 0) + COALESCE(LINE_NCH_PMT_AMT_3, 0) +
+          COALESCE(LINE_NCH_PMT_AMT_4, 0) + COALESCE(LINE_NCH_PMT_AMT_5, 0) + COALESCE(LINE_NCH_PMT_AMT_6, 0) +
+          COALESCE(LINE_NCH_PMT_AMT_7, 0) + COALESCE(LINE_NCH_PMT_AMT_8, 0) + COALESCE(LINE_NCH_PMT_AMT_9, 0) +
+          COALESCE(LINE_NCH_PMT_AMT_10, 0) + COALESCE(LINE_NCH_PMT_AMT_11, 0) + COALESCE(LINE_NCH_PMT_AMT_12, 0) +
+          COALESCE(LINE_NCH_PMT_AMT_13, 0)
+      ) AS medicare_paid
+    FROM carrier_claims
+    WHERE CLM_FROM_DT BETWEEN 20090101 AND 20091231;
+  tags: [wide_line_items, payment_type]
+  notes: Allowed and paid are different amounts.
+
+- id: H-016
+  group: hard
+  question: For doctor claims starting in 2010, what percentage of allowed charges was member coinsurance?
+  sql: |-
+    SELECT 100.0 * SUM(
+          COALESCE(LINE_COINSRNC_AMT_1, 0) + COALESCE(LINE_COINSRNC_AMT_2, 0) + COALESCE(LINE_COINSRNC_AMT_3, 0) +
+          COALESCE(LINE_COINSRNC_AMT_4, 0) + COALESCE(LINE_COINSRNC_AMT_5, 0) + COALESCE(LINE_COINSRNC_AMT_6, 0) +
+          COALESCE(LINE_COINSRNC_AMT_7, 0) + COALESCE(LINE_COINSRNC_AMT_8, 0) + COALESCE(LINE_COINSRNC_AMT_9, 0) +
+          COALESCE(LINE_COINSRNC_AMT_10, 0) + COALESCE(LINE_COINSRNC_AMT_11, 0) + COALESCE(LINE_COINSRNC_AMT_12, 0) +
+          COALESCE(LINE_COINSRNC_AMT_13, 0)
+      ) / SUM(
+          COALESCE(LINE_ALOWD_CHRG_AMT_1, 0) + COALESCE(LINE_ALOWD_CHRG_AMT_2, 0) + COALESCE(LINE_ALOWD_CHRG_AMT_3, 0) +
+          COALESCE(LINE_ALOWD_CHRG_AMT_4, 0) + COALESCE(LINE_ALOWD_CHRG_AMT_5, 0) + COALESCE(LINE_ALOWD_CHRG_AMT_6, 0) +
+          COALESCE(LINE_ALOWD_CHRG_AMT_7, 0) + COALESCE(LINE_ALOWD_CHRG_AMT_8, 0) + COALESCE(LINE_ALOWD_CHRG_AMT_9, 0) +
+          COALESCE(LINE_ALOWD_CHRG_AMT_10, 0) + COALESCE(LINE_ALOWD_CHRG_AMT_11, 0) + COALESCE(LINE_ALOWD_CHRG_AMT_12, 0) +
+          COALESCE(LINE_ALOWD_CHRG_AMT_13, 0)
+      ) AS coinsurance_pct
+    FROM carrier_claims
+    WHERE CLM_FROM_DT BETWEEN 20100101 AND 20101231;
+  tags: [wide_line_items, payment_type]
+  notes: Ratio of two cross-line sums.
+
+- id: H-017
+  group: hard
+  question: On average, how many of the 13 service lines are filled in per doctor claim?
+  sql: |-
+    SELECT AVG(
+          (HCPCS_CD_1 IS NOT NULL)::INTEGER + (HCPCS_CD_2 IS NOT NULL)::INTEGER + (HCPCS_CD_3 IS NOT NULL)::INTEGER +
+          (HCPCS_CD_4 IS NOT NULL)::INTEGER + (HCPCS_CD_5 IS NOT NULL)::INTEGER + (HCPCS_CD_6 IS NOT NULL)::INTEGER +
+          (HCPCS_CD_7 IS NOT NULL)::INTEGER + (HCPCS_CD_8 IS NOT NULL)::INTEGER + (HCPCS_CD_9 IS NOT NULL)::INTEGER +
+          (HCPCS_CD_10 IS NOT NULL)::INTEGER + (HCPCS_CD_11 IS NOT NULL)::INTEGER + (HCPCS_CD_12 IS NOT NULL)::INTEGER +
+          (HCPCS_CD_13 IS NOT NULL)::INTEGER
+    )
+    FROM carrier_claims;
+  tags: [wide_line_items, null_handling]
+  notes: A line counts as used when its HCPCS service code is present.
+
+- id: H-018
+  group: hard
+  question: How many doctor claims have essential hypertension on any service line?
+  sql: |-
+    SELECT COUNT(*)
+    FROM carrier_claims
+    WHERE '4019' IN (
+          LINE_ICD9_DGNS_CD_1, LINE_ICD9_DGNS_CD_2, LINE_ICD9_DGNS_CD_3, LINE_ICD9_DGNS_CD_4,
+          LINE_ICD9_DGNS_CD_5, LINE_ICD9_DGNS_CD_6, LINE_ICD9_DGNS_CD_7, LINE_ICD9_DGNS_CD_8,
+          LINE_ICD9_DGNS_CD_9, LINE_ICD9_DGNS_CD_10, LINE_ICD9_DGNS_CD_11, LINE_ICD9_DGNS_CD_12,
+          LINE_ICD9_DGNS_CD_13
+    );
+  tags: [wide_line_items, column_family, code_as_text]
+  notes: Checks all 13 line diagnosis columns.
+
+- id: H-019
+  group: hard
+  question: How many members had diabetes recorded in any diagnosis position on a hospital claim?
+  sql: |-
+    SELECT COUNT(DISTINCT DESYNPUF_ID)
+    FROM inpatient_claims
+    WHERE ICD9_DGNS_CD_1 LIKE '250%'
+          OR ICD9_DGNS_CD_2 LIKE '250%'
+          OR ICD9_DGNS_CD_3 LIKE '250%'
+          OR ICD9_DGNS_CD_4 LIKE '250%'
+          OR ICD9_DGNS_CD_5 LIKE '250%'
+          OR ICD9_DGNS_CD_6 LIKE '250%'
+          OR ICD9_DGNS_CD_7 LIKE '250%'
+          OR ICD9_DGNS_CD_8 LIKE '250%'
+          OR ICD9_DGNS_CD_9 LIKE '250%'
+          OR ICD9_DGNS_CD_10 LIKE '250%';
+  tags: [column_family, code_as_text]
+  notes: Any of 10 diagnosis columns.
+
+- id: H-020
+  group: hard
+  question: What share of hospital stays had heart failure in any diagnosis position?
+  sql: |-
+    SELECT COUNT(DISTINCT CASE WHEN ICD9_DGNS_CD_1 LIKE '428%'
+                                     OR ICD9_DGNS_CD_2 LIKE '428%'
+                                     OR ICD9_DGNS_CD_3 LIKE '428%'
+                                     OR ICD9_DGNS_CD_4 LIKE '428%'
+                                     OR ICD9_DGNS_CD_5 LIKE '428%'
+                                     OR ICD9_DGNS_CD_6 LIKE '428%'
+                                     OR ICD9_DGNS_CD_7 LIKE '428%'
+                                     OR ICD9_DGNS_CD_8 LIKE '428%'
+                                     OR ICD9_DGNS_CD_9 LIKE '428%'
+                                     OR ICD9_DGNS_CD_10 LIKE '428%'
+                               THEN CLM_ID END) * 1.0
+           / COUNT(DISTINCT CLM_ID) AS hf_share
+    FROM inpatient_claims;
+  tags: [column_family, claim_segments, code_as_text]
+  notes: Distinct claims in numerator and denominator.
+
+- id: H-021
+  group: hard
+  question: How many inpatient claim records have an admitting diagnosis that does not appear among that record's 10 diagnosis codes?
+  sql: |-
+    SELECT COUNT(*)
+    FROM inpatient_claims
+    WHERE ADMTNG_ICD9_DGNS_CD IS NOT NULL
+      AND NOT list_contains([
+          ICD9_DGNS_CD_1, ICD9_DGNS_CD_2, ICD9_DGNS_CD_3, ICD9_DGNS_CD_4,
+          ICD9_DGNS_CD_5, ICD9_DGNS_CD_6, ICD9_DGNS_CD_7, ICD9_DGNS_CD_8,
+          ICD9_DGNS_CD_9, ICD9_DGNS_CD_10
+      ], ADMTNG_ICD9_DGNS_CD);
+  tags: [column_family, null_handling]
+  notes: NOT IN would return NULL when any diagnosis is NULL; list_contains avoids that.
+
+- id: H-022
+  group: hard
+  question: How many members had three or more of the 11 chronic conditions in 2010?
+  sql: |-
+    SELECT COUNT(*)
+    FROM beneficiary
+    WHERE year = 2010
+      AND (
+          (SP_ALZHDMTA = 1)::INTEGER + (SP_CHF = 1)::INTEGER + (SP_CHRNKIDN = 1)::INTEGER +
+          (SP_CNCR = 1)::INTEGER + (SP_COPD = 1)::INTEGER + (SP_DEPRESSN = 1)::INTEGER +
+          (SP_DIABETES = 1)::INTEGER + (SP_ISCHMCHT = 1)::INTEGER + (SP_OSTEOPRS = 1)::INTEGER +
+          (SP_RA_OA = 1)::INTEGER + (SP_STRKETIA = 1)::INTEGER
+      ) >= 3;
+  tags: [coded_flag, multi_year_beneficiary]
+  notes: Flags are 1 = yes, 2 = no, so summing raw flags is wrong.
+
+- id: H-023
+  group: hard
+  question: In 2009, what was the average number of chronic conditions per member in each age band (under 65, 65-74, 75-84, 85+)?
+  sql: |-
+    WITH m AS (
+      SELECT 2009 - BENE_BIRTH_DT // 10000 AS age,
+             (SP_ALZHDMTA = 1)::INTEGER + (SP_CHF = 1)::INTEGER + (SP_CHRNKIDN = 1)::INTEGER +
+             (SP_CNCR = 1)::INTEGER + (SP_COPD = 1)::INTEGER + (SP_DEPRESSN = 1)::INTEGER +
+             (SP_DIABETES = 1)::INTEGER + (SP_ISCHMCHT = 1)::INTEGER + (SP_OSTEOPRS = 1)::INTEGER +
+             (SP_RA_OA = 1)::INTEGER + (SP_STRKETIA = 1)::INTEGER AS n_conditions
+      FROM beneficiary
+      WHERE year = 2009
+    )
+    SELECT CASE WHEN age < 65 THEN '1: <65'
+                WHEN age < 75 THEN '2: 65-74'
+                WHEN age < 85 THEN '3: 75-84'
+                ELSE '4: 85+' END AS age_band,
+           AVG(n_conditions) AS avg_conditions
+    FROM m
+    GROUP BY age_band
+    ORDER BY age_band;
+  tags: [coded_flag, raw_integer_dates, multi_year_beneficiary]
+  notes: Age reached in 2009.
+
+- id: H-024
+  group: hard
+  question: Which pair of chronic conditions occurred together most often in 2008?
+  sql: |-
+    WITH f AS (
+      SELECT DESYNPUF_ID, 'SP_ALZHDMTA' AS cond FROM beneficiary WHERE year = 2008 AND SP_ALZHDMTA = 1
+      UNION ALL
+      SELECT DESYNPUF_ID, 'SP_CHF' AS cond FROM beneficiary WHERE year = 2008 AND SP_CHF = 1
+      UNION ALL
+      SELECT DESYNPUF_ID, 'SP_CHRNKIDN' AS cond FROM beneficiary WHERE year = 2008 AND SP_CHRNKIDN = 1
+      UNION ALL
+      SELECT DESYNPUF_ID, 'SP_CNCR' AS cond FROM beneficiary WHERE year = 2008 AND SP_CNCR = 1
+      UNION ALL
+      SELECT DESYNPUF_ID, 'SP_COPD' AS cond FROM beneficiary WHERE year = 2008 AND SP_COPD = 1
+      UNION ALL
+      SELECT DESYNPUF_ID, 'SP_DEPRESSN' AS cond FROM beneficiary WHERE year = 2008 AND SP_DEPRESSN = 1
+      UNION ALL
+      SELECT DESYNPUF_ID, 'SP_DIABETES' AS cond FROM beneficiary WHERE year = 2008 AND SP_DIABETES = 1
+      UNION ALL
+      SELECT DESYNPUF_ID, 'SP_ISCHMCHT' AS cond FROM beneficiary WHERE year = 2008 AND SP_ISCHMCHT = 1
+      UNION ALL
+      SELECT DESYNPUF_ID, 'SP_OSTEOPRS' AS cond FROM beneficiary WHERE year = 2008 AND SP_OSTEOPRS = 1
+      UNION ALL
+      SELECT DESYNPUF_ID, 'SP_RA_OA' AS cond FROM beneficiary WHERE year = 2008 AND SP_RA_OA = 1
+      UNION ALL
+      SELECT DESYNPUF_ID, 'SP_STRKETIA' AS cond FROM beneficiary WHERE year = 2008 AND SP_STRKETIA = 1
+    )
+    SELECT a.cond AS condition_1, b.cond AS condition_2, COUNT(*) AS members
+    FROM f a
+    JOIN f b
+      ON a.DESYNPUF_ID = b.DESYNPUF_ID
+     AND a.cond < b.cond
+    GROUP BY a.cond, b.cond
+    ORDER BY members DESC, condition_1, condition_2
+    LIMIT 1;
+  tags: [coded_flag, multi_year_beneficiary]
+  notes: Unpivot the 11 flags, then self-join pairs.
+
+- id: H-025
+  group: hard
+  question: Which year saw the largest increase in the number of members with depression compared with the year before?
+  sql: |-
+    WITH t AS (
+      SELECT year, COUNT(*) AS members
+      FROM beneficiary
+      WHERE SP_DEPRESSN = 1
+      GROUP BY year
+    )
+    SELECT year, members - LAG(members) OVER (ORDER BY year) AS change
+    FROM t
+    QUALIFY change IS NOT NULL
+    ORDER BY change DESC, year
+    LIMIT 1;
+  tags: [coded_flag, multi_year_beneficiary]
+  notes: Change may be negative if counts fall. Ties broken by code so the answer is deterministic.
+
+- id: H-026
+  group: hard
+  question: What percentage of members in the 2008 data had died by the end of 2010?
+  sql: |-
+    WITH dead AS (
+      SELECT DISTINCT DESYNPUF_ID
+      FROM beneficiary
+      WHERE BENE_DEATH_DT BETWEEN 20080101 AND 20101231
+    )
+    SELECT 100.0 * COUNT(d.DESYNPUF_ID) / COUNT(*) AS pct_died
+    FROM beneficiary b
+    LEFT JOIN dead d
+      ON d.DESYNPUF_ID = b.DESYNPUF_ID
+    WHERE b.year = 2008;
+  tags: [death_attrition, multi_year_beneficiary, raw_integer_dates]
+  notes: Base is the 2008 cohort.
+
+- id: H-027
+  group: hard
+  question: What was the average age at death for members who died between 2008 and 2010?
+  sql: |-
+    SELECT AVG(death_year - birth_year)
+    FROM (
+      SELECT DISTINCT DESYNPUF_ID,
+             BENE_DEATH_DT // 10000 AS death_year,
+             BENE_BIRTH_DT // 10000 AS birth_year
+      FROM beneficiary
+      WHERE BENE_DEATH_DT IS NOT NULL
+    );
+  tags: [raw_integer_dates, death_attrition, multi_year_beneficiary]
+  notes: One row per member before averaging.
+
+- id: H-028
+  group: hard
+  question: Which 5 states had the highest average total Medicare reimbursement per member in 2009, adding inpatient, outpatient and carrier?
+  sql: |-
+    SELECT SP_STATE_CODE,
+           AVG(MEDREIMB_IP + MEDREIMB_OP + MEDREIMB_CAR) AS avg_total
+    FROM beneficiary
+    WHERE year = 2009
+    GROUP BY SP_STATE_CODE
+    ORDER BY avg_total DESC, SP_STATE_CODE
+    LIMIT 5;
+  tags: [ssa_state_code, payment_type, multi_year_beneficiary]
+  notes: Three summary columns added. Ties broken by code so the answer is deterministic.
+
+- id: H-029
+  group: hard
+  question: What was the 2009 Medicare inpatient cost per member per month of Part A coverage?
+  sql: |-
+    WITH c AS (
+      SELECT CLM_ID, DESYNPUF_ID,
+             MIN(CLM_FROM_DT) AS start_dt,
+             MIN(CLM_DRG_CD) AS drg,
+             SUM(CLM_PMT_AMT) AS paid
+      FROM inpatient_claims
+      GROUP BY CLM_ID, DESYNPUF_ID
+    )
+    SELECT
+      (SELECT SUM(paid) FROM c WHERE start_dt BETWEEN 20090101 AND 20091231)
+      /
+      (SELECT SUM(BENE_HI_CVRAGE_TOT_MONS) FROM beneficiary WHERE year = 2009)
+      AS pmpm;
+  tags: [partial_enrollment, cross_table, payment_type, claim_segments, null_handling]
+  notes: Denominator is member-months; numerator keeps segment-2 payments.
+
+- id: H-030
+  group: hard
+  question: Among states with at least 1,000 members in 2010, what share had 90% or more of members with full-year Part A coverage?
+  sql: |-
+    WITH s AS (
+      SELECT SP_STATE_CODE,
+             AVG(CASE WHEN BENE_HI_CVRAGE_TOT_MONS = 12 THEN 1.0 ELSE 0.0 END) AS full_share
+      FROM beneficiary
+      WHERE year = 2010
+      GROUP BY SP_STATE_CODE
+      HAVING COUNT(*) >= 1000
+    )
+    SELECT AVG(CASE WHEN full_share >= 0.9 THEN 1.0 ELSE 0.0 END)
+    FROM s;
+  tags: [partial_enrollment, ssa_state_code, multi_year_beneficiary]
+  notes: Two-level aggregation.
+
+- id: H-031
+  group: hard
+  question: What percentage of 2009 members had 0, 1, 2, and 3 or more hospital stays starting that year?
+  sql: |-
+    WITH c AS (
+      SELECT b.DESYNPUF_ID, COUNT(DISTINCT i.CLM_ID) AS stays
+      FROM beneficiary b
+      LEFT JOIN inpatient_claims i
+        ON i.DESYNPUF_ID = b.DESYNPUF_ID
+       AND i.CLM_FROM_DT BETWEEN 20090101 AND 20091231
+      WHERE b.year = 2009
+      GROUP BY b.DESYNPUF_ID
+    )
+    SELECT CASE WHEN stays >= 3 THEN '3+' ELSE CAST(stays AS VARCHAR) END AS bucket,
+           100.0 * COUNT(*) / SUM(COUNT(*)) OVER () AS pct_members
+    FROM c
+    GROUP BY bucket
+    ORDER BY bucket;
+  tags: [null_handling, cross_table, multi_year_beneficiary, claim_segments]
+  notes: LEFT JOIN keeps members with zero stays.
+
+- id: H-032
+  group: hard
+  question: In 2009, what were average hospital days per member for members with and without ESRD, counting members with no stays as zero?
+  sql: |-
+    WITH d AS (
+      SELECT b.DESYNPUF_ID, b.BENE_ESRD_IND,
+             COALESCE(SUM(i.CLM_UTLZTN_DAY_CNT), 0) AS days
+      FROM beneficiary b
+      LEFT JOIN inpatient_claims i
+        ON i.DESYNPUF_ID = b.DESYNPUF_ID
+       AND i.CLM_FROM_DT BETWEEN 20090101 AND 20091231
+      WHERE b.year = 2009
+      GROUP BY b.DESYNPUF_ID, b.BENE_ESRD_IND
+    )
+    SELECT BENE_ESRD_IND, AVG(days) AS avg_days
+    FROM d
+    GROUP BY BENE_ESRD_IND
+    ORDER BY BENE_ESRD_IND;
+  tags: [cross_table, null_handling, code_as_text]
+  notes: Zero-stay members must count.
+
+- id: H-033
+  group: hard
+  question: In 2010, what was the average total Medicare claim payment per member for members with and without diabetes, across all claim types?
+  sql: |-
+    WITH ip AS (
+      SELECT CLM_ID, DESYNPUF_ID, MIN(CLM_FROM_DT) AS start_dt, SUM(CLM_PMT_AMT) AS paid
+      FROM inpatient_claims
+      GROUP BY CLM_ID, DESYNPUF_ID
+    ),
+    op AS (
+      SELECT CLM_ID, DESYNPUF_ID, MIN(CLM_FROM_DT) AS start_dt, SUM(CLM_PMT_AMT) AS paid
+      FROM outpatient_claims
+      GROUP BY CLM_ID, DESYNPUF_ID
+    ),
+    claims AS (
+      SELECT DESYNPUF_ID, paid FROM ip
+      WHERE start_dt BETWEEN 20100101 AND 20101231
+      UNION ALL
+      SELECT DESYNPUF_ID, paid FROM op
+      WHERE start_dt BETWEEN 20100101 AND 20101231
+      UNION ALL
+      SELECT DESYNPUF_ID,
+             COALESCE(LINE_NCH_PMT_AMT_1, 0) + COALESCE(LINE_NCH_PMT_AMT_2, 0) + COALESCE(LINE_NCH_PMT_AMT_3, 0) +
+               COALESCE(LINE_NCH_PMT_AMT_4, 0) + COALESCE(LINE_NCH_PMT_AMT_5, 0) + COALESCE(LINE_NCH_PMT_AMT_6, 0) +
+               COALESCE(LINE_NCH_PMT_AMT_7, 0) + COALESCE(LINE_NCH_PMT_AMT_8, 0) + COALESCE(LINE_NCH_PMT_AMT_9, 0) +
+               COALESCE(LINE_NCH_PMT_AMT_10, 0) + COALESCE(LINE_NCH_PMT_AMT_11, 0) + COALESCE(LINE_NCH_PMT_AMT_12, 0) +
+               COALESCE(LINE_NCH_PMT_AMT_13, 0)
+      FROM carrier_claims
+      WHERE CLM_FROM_DT BETWEEN 20100101 AND 20101231
+    ),
+    m AS (
+      SELECT DESYNPUF_ID, SUM(paid) AS total
+      FROM claims
+      GROUP BY DESYNPUF_ID
+    )
+    SELECT b.SP_DIABETES, AVG(COALESCE(m.total, 0)) AS avg_paid
+    FROM beneficiary b
+    LEFT JOIN m
+      ON m.DESYNPUF_ID = b.DESYNPUF_ID
+    WHERE b.year = 2010
+    GROUP BY b.SP_DIABETES
+    ORDER BY b.SP_DIABETES;
+  tags: [cross_table, wide_line_items, coded_flag, payment_type, claim_segments, null_handling]
+  notes: Members with no claims count as zero; segment-2 payments kept via per-claim totals.
+
+- id: H-034
+  group: hard
+  question: How many members had a hospital stay starting in 2010 but no claims of any type starting in 2009?
+  sql: |-
+    SELECT COUNT(*)
+    FROM (
+      SELECT DISTINCT DESYNPUF_ID
+      FROM inpatient_claims
+      WHERE CLM_FROM_DT BETWEEN 20100101 AND 20101231
+    ) x
+    WHERE NOT EXISTS (SELECT 1 FROM inpatient_claims i
+                      WHERE i.DESYNPUF_ID = x.DESYNPUF_ID
+                        AND i.CLM_FROM_DT BETWEEN 20090101 AND 20091231)
+      AND NOT EXISTS (SELECT 1 FROM outpatient_claims o
+                      WHERE o.DESYNPUF_ID = x.DESYNPUF_ID
+                        AND o.CLM_FROM_DT BETWEEN 20090101 AND 20091231)
+      AND NOT EXISTS (SELECT 1 FROM carrier_claims c
+                      WHERE c.DESYNPUF_ID = x.DESYNPUF_ID
+                        AND c.CLM_FROM_DT BETWEEN 20090101 AND 20091231);
+  tags: [cross_table, date_basis]
+  notes: Checks all three claim tables.
+
+- id: H-035
+  group: hard
+  question: How many hospital stays discharged in 2009 were followed by an outpatient visit within 7 days of discharge?
+  sql: |-
+    WITH stays AS (
+      SELECT CLM_ID, DESYNPUF_ID,
+             MIN(PRVDR_NUM) AS prov,
+             try_strptime(CAST(MIN(CLM_ADMSN_DT) AS VARCHAR), '%Y%m%d')::DATE AS admit,
+             try_strptime(CAST(MAX(NCH_BENE_DSCHRG_DT) AS VARCHAR), '%Y%m%d')::DATE AS disch
+      FROM inpatient_claims
+      WHERE CLM_ADMSN_DT IS NOT NULL AND NCH_BENE_DSCHRG_DT IS NOT NULL
+      GROUP BY CLM_ID, DESYNPUF_ID
+    )
+    SELECT COUNT(*)
+    FROM stays s
+    WHERE year(s.disch) = 2009
+      AND EXISTS (
+        SELECT 1
+        FROM outpatient_claims o
+        WHERE o.DESYNPUF_ID = s.DESYNPUF_ID
+          AND try_strptime(CAST(o.CLM_FROM_DT AS VARCHAR), '%Y%m%d')::DATE
+              BETWEEN s.disch AND s.disch + INTERVAL 7 DAY
+      );
+  tags: [raw_integer_dates, cross_table, claim_segments]
+  notes: Date arithmetic needs real dates, not integers.
+
+- id: H-036
+  group: hard
+  question: How many 2009 members had summary inpatient reimbursement that differs from their 2009 inpatient claim payments by more than $1,000?
+  sql: |-
+    WITH c AS (
+      SELECT CLM_ID, DESYNPUF_ID,
+             MIN(CLM_FROM_DT) AS start_dt,
+             MIN(CLM_DRG_CD) AS drg,
+             SUM(CLM_PMT_AMT) AS paid
+      FROM inpatient_claims
+      GROUP BY CLM_ID, DESYNPUF_ID
+    ),
+    m AS (
+      SELECT DESYNPUF_ID, SUM(paid) AS claims_paid
+      FROM c
+      WHERE start_dt BETWEEN 20090101 AND 20091231
+      GROUP BY DESYNPUF_ID
+    )
+    SELECT COUNT(*)
+    FROM beneficiary b
+    LEFT JOIN m
+      ON m.DESYNPUF_ID = b.DESYNPUF_ID
+    WHERE b.year = 2009
+      AND ABS(b.MEDREIMB_IP - COALESCE(m.claims_paid, 0)) > 1000;
+  tags: [payment_type, multi_year_beneficiary, cross_table, claim_segments, null_handling]
+  notes: Reconciliation between summary and claim totals; segment-2 payments included.
+
+- id: H-037
+  group: hard
+  question: How many hospitals have an average Medicare payment per stay more than twice the overall average?
+  sql: |-
+    WITH s AS (
+      SELECT CLM_ID, MIN(PRVDR_NUM) AS prov, SUM(CLM_PMT_AMT) AS paid
+      FROM inpatient_claims
+      GROUP BY CLM_ID
+    ),
+    h AS (
+      SELECT prov, AVG(paid) AS avg_paid
+      FROM s
+      GROUP BY prov
+    )
+    SELECT COUNT(*)
+    FROM h
+    WHERE avg_paid > 2 * (SELECT AVG(paid) FROM s);
+  tags: [claim_segments, payment_type]
+  notes: Per-stay totals first.
+
+- id: H-038
+  group: hard
+  question: What percentage of inpatient claim records have a utilization day count different from discharge date minus admission date?
+  sql: |-
+    WITH r AS (
+      SELECT CLM_UTLZTN_DAY_CNT AS days,
+             date_diff('day',
+               try_strptime(CAST(CLM_ADMSN_DT AS VARCHAR), '%Y%m%d')::DATE,
+               try_strptime(CAST(NCH_BENE_DSCHRG_DT AS VARCHAR), '%Y%m%d')::DATE) AS span
+      FROM inpatient_claims
+      WHERE CLM_ADMSN_DT IS NOT NULL
+        AND NCH_BENE_DSCHRG_DT IS NOT NULL
+        AND CLM_UTLZTN_DAY_CNT IS NOT NULL
+    )
+    SELECT 100.0 * AVG(CASE WHEN days <> span THEN 1.0 ELSE 0.0 END) AS pct_mismatch
+    FROM r;
+  tags: [raw_integer_dates, null_handling]
+  notes: Date subtraction on YYYYMMDD integers would be wrong.
+
+- id: H-039
+  group: hard
+  question: For each start year 2008-2010, what percentage of outpatient claims are split into more than one segment?
+  sql: |-
+    WITH c AS (
+      SELECT CLM_ID, MIN(CLM_FROM_DT) // 10000 AS start_year, COUNT(*) AS n_rows
+      FROM outpatient_claims
+      GROUP BY CLM_ID
+    )
+    SELECT start_year,
+           100.0 * AVG(CASE WHEN n_rows > 1 THEN 1.0 ELSE 0.0 END) AS pct_multi_segment
+    FROM c
+    WHERE start_year BETWEEN 2008 AND 2010
+    GROUP BY start_year
+    ORDER BY start_year;
+  tags: [claim_segments]
+  notes: Rows per CLM_ID.
+
+- id: H-040
+  group: hard
+  question: Which 5 members saw the most different attending physicians across their hospital stays?
+  sql: |-
+    SELECT DESYNPUF_ID, COUNT(DISTINCT AT_PHYSN_NPI) AS physicians
+    FROM inpatient_claims
+    GROUP BY DESYNPUF_ID
+    ORDER BY physicians DESC, DESYNPUF_ID
+    LIMIT 5;
+  tags: [null_handling]
+  notes: Ties broken by member ID so the answer is deterministic.
+
+# ---- Infeasible questions (T1-T4), 80 total ----
+# Drafted with AI help. Paste BELOW H-040. No SQL: the correct behaviour is to refuse.
+
+- id: T1-001
+  group: T1
+  question: What is the average monthly premium members paid in 2009?
+  tags: []
+  notes: No premium column in any table.
+
+- id: T1-002
+  group: T1
+  question: Which insurance plan name has the most members?
+  tags: []
+  notes: No plan names; only coverage-month counts.
+
+- id: T1-003
+  group: T1
+  question: Which hospital had the most stays? Give the hospital's name.
+  tags: []
+  notes: Only provider numbers, no facility names.
+
+- id: T1-004
+  group: T1
+  question: How many doctor claims were from cardiologists?
+  tags: []
+  notes: No physician specialty field.
+
+- id: T1-005
+  group: T1
+  question: What was the most common reason claims were denied?
+  tags: []
+  notes: No denial reason or claim status.
+
+- id: T1-006
+  group: T1
+  question: How many claims are still pending payment?
+  tags: []
+  notes: No claim status field.
+
+- id: T1-007
+  group: T1
+  question: What is the average household income of members with diabetes?
+  tags: []
+  notes: No income data.
+
+- id: T1-008
+  group: T1
+  question: How many members live in ZIP code 10001?
+  tags: []
+  notes: Only state and county codes, no ZIP.
+
+- id: T1-009
+  group: T1
+  question: What is the average HbA1c level of diabetic members?
+  tags: []
+  notes: No lab results.
+
+- id: T1-010
+  group: T1
+  question: How many members are smokers?
+  tags: []
+  notes: No smoking status.
+
+- id: T1-011
+  group: T1
+  question: What is the average BMI of members with heart failure?
+  tags: []
+  notes: No height, weight or BMI.
+
+- id: T1-012
+  group: T1
+  question: What is the average blood pressure of members?
+  tags: []
+  notes: No vital signs.
+
+- id: T1-013
+  group: T1
+  question: How many members are married?
+  tags: []
+  notes: No marital status.
+
+- id: T1-014
+  group: T1
+  question: Which language do members speak most often?
+  tags: []
+  notes: No language field.
+
+- id: T1-015
+  group: T1
+  question: What is each member's phone number?
+  tags: []
+  notes: No contact details.
+
+- id: T1-016
+  group: T1
+  question: Who is each member's primary care doctor?
+  tags: []
+  notes: No primary care assignment.
+
+- id: T1-017
+  group: T1
+  question: How many claims were for out-of-network providers?
+  tags: []
+  notes: No network status.
+
+- id: T1-018
+  group: T1
+  question: How many procedures required prior authorization?
+  tags: []
+  notes: No authorization data.
+
+- id: T1-019
+  group: T1
+  question: What is the average patient satisfaction score for each hospital?
+  tags: []
+  notes: No satisfaction data.
+
+- id: T1-020
+  group: T1
+  question: How many beds does each hospital have?
+  tags: []
+  notes: No facility attributes.
+
+- id: T1-021
+  group: T1
+  question: What is the average wait time for a doctor's appointment?
+  tags: []
+  notes: No appointment or scheduling data.
+
+- id: T1-022
+  group: T1
+  question: Which employers sponsor the most members?
+  tags: []
+  notes: No employer data.
+
+- id: T1-023
+  group: T1
+  question: What is the education level of members with depression?
+  tags: []
+  notes: No education data.
+
+- id: T1-024
+  group: T1
+  question: How many members qualify for Medicare because of a disability other than ESRD?
+  tags: []
+  notes: No entitlement-reason field; only ESRD and chronic-condition flags.
+
+- id: T1-025
+  group: T1
+  question: What is the name of the most common diagnosis?
+  tags: []
+  notes: Only ICD-9 codes; no diagnosis description table.
+
+- id: T2-001
+  group: T2
+  question: How many hospital stays were there in 2011?
+  tags: []
+  notes: Data covers 2008-2010 only.
+
+- id: T2-002
+  group: T2
+  question: How many members were enrolled in 2012?
+  tags: []
+  notes: Data covers 2008-2010 only.
+
+- id: T2-003
+  group: T2
+  question: How many members were enrolled in 2007?
+  tags: []
+  notes: Member summaries start in 2008.
+
+- id: T2-004
+  group: T2
+  question: How many claims used ICD-10 code E11.9?
+  tags: []
+  notes: Data uses ICD-9 codes only.
+
+- id: T2-005
+  group: T2
+  question: How many prescriptions were filled in 2009?
+  tags: []
+  notes: Prescription drug event file was not loaded.
+
+- id: T2-006
+  group: T2
+  question: What was the most prescribed drug in 2010?
+  tags: []
+  notes: Prescription drug event file was not loaded.
+
+- id: T2-007
+  group: T2
+  question: How much did Medicare spend on Part D drugs in 2008?
+  tags: []
+  notes: Prescription drug event file was not loaded.
+
+- id: T2-008
+  group: T2
+  question: How many claims were later adjusted or reversed?
+  tags: []
+  notes: Only final claims; no adjustment or reversal records.
+
+- id: T2-009
+  group: T2
+  question: How many skilled nursing facility stays were there?
+  tags: []
+  notes: No SNF claims in the data.
+
+- id: T2-010
+  group: T2
+  question: How many home health visits did members have?
+  tags: []
+  notes: No home health claims in the data.
+
+- id: T2-011
+  group: T2
+  question: How many members used hospice care?
+  tags: []
+  notes: No hospice claims in the data.
+
+- id: T2-012
+  group: T2
+  question: How much was spent on wheelchairs and other durable medical equipment?
+  tags: []
+  notes: No DME claims file in the data.
+
+- id: T2-013
+  group: T2
+  question: How much did Medicaid pay for dual-eligible members?
+  tags: []
+  notes: No Medicaid data.
+
+- id: T2-014
+  group: T2
+  question: How many claims were submitted last month?
+  tags: []
+  notes: Data ends in 2010; nothing recent.
+
+- id: T2-015
+  group: T2
+  question: How many members had a COVID-19 diagnosis?
+  tags: []
+  notes: Data predates 2020.
+
+- id: T3-001
+  group: T3
+  question: Who are the top providers?
+  tags: []
+  notes: Top by payment, stays or patients? Which claim type?
+
+- id: T3-002
+  group: T3
+  question: Which members are the most expensive?
+  tags: []
+  notes: Which year, which payment type, how many members?
+
+- id: T3-003
+  group: T3
+  question: Which members are high-risk?
+  tags: []
+  notes: No definition of risk.
+
+- id: T3-004
+  group: T3
+  question: Show me the recent claims.
+  tags: []
+  notes: '''Recent'' relative to what?'
+
+- id: T3-005
+  group: T3
+  question: What is the total cost of care?
+  tags: []
+  notes: Medicare paid, member paid or allowed? Which year?
+
+- id: T3-006
+  group: T3
+  question: What is the average cost per member?
+  tags: []
+  notes: Which services, which year, which payer?
+
+- id: T3-007
+  group: T3
+  question: Which hospital is the busiest?
+  tags: []
+  notes: Busiest by stays, days or payment?
+
+- id: T3-008
+  group: T3
+  question: Who are the frequent visitors?
+  tags: []
+  notes: How many visits counts as frequent?
+
+- id: T3-009
+  group: T3
+  question: How many elderly members are there?
+  tags: []
+  notes: What age cutoff, and which year?
+
+- id: T3-010
+  group: T3
+  question: How many long hospital stays were there?
+  tags: []
+  notes: How many days counts as long?
+
+- id: T3-011
+  group: T3
+  question: Who are the sickest members?
+  tags: []
+  notes: Sickest by conditions, stays or cost?
+
+- id: T3-012
+  group: T3
+  question: Which states perform best?
+  tags: []
+  notes: Perform on what measure?
+
+- id: T3-013
+  group: T3
+  question: What are the most popular procedures?
+  tags: []
+  notes: Inpatient, outpatient or carrier codes?
+
+- id: T3-014
+  group: T3
+  question: What is the most common diagnosis?
+  tags: []
+  notes: Which claim type and which diagnosis position?
+
+- id: T3-015
+  group: T3
+  question: How much did members spend?
+  tags: []
+  notes: On which services, in which year?
+
+- id: T3-016
+  group: T3
+  question: How many members are chronically ill?
+  tags: []
+  notes: How many conditions qualify?
+
+- id: T3-017
+  group: T3
+  question: Which doctors are the most active?
+  tags: []
+  notes: Attending, operating or carrier physicians? Measured how?
+
+- id: T3-018
+  group: T3
+  question: How many members are high utilizers?
+  tags: []
+  notes: No utilization threshold given.
+
+- id: T3-019
+  group: T3
+  question: What were costs last year?
+  tags: []
+  notes: Which year counts as last year, and which costs?
+
+- id: T3-020
+  group: T3
+  question: How many members have heart problems?
+  tags: []
+  notes: Heart failure flag, ischemic heart disease flag, or diagnosis codes?
+
+- id: T3-021
+  group: T3
+  question: What is the average payment?
+  tags: []
+  notes: Per claim, per stay or per member? Which table?
+
+- id: T3-022
+  group: T3
+  question: Which counties are the worst?
+  tags: []
+  notes: Worst on what measure?
+
+- id: T3-023
+  group: T3
+  question: How many members were covered?
+  tags: []
+  notes: Part A, Part B or HMO? Full or partial year? Which year?
+
+- id: T3-024
+  group: T3
+  question: Who had the most claims?
+  tags: []
+  notes: Which claim type and which year?
+
+- id: T3-025
+  group: T3
+  question: How many big claims were there?
+  tags: []
+  notes: What amount counts as big?
+
+- id: T4-001
+  group: T4
+  question: Why did inpatient costs rise from 2008 to 2009?
+  tags: []
+  notes: Asks for a cause, not a data lookup.
+
+- id: T4-002
+  group: T4
+  question: What will total Medicare spending be in 2011?
+  tags: []
+  notes: Prediction.
+
+- id: T4-003
+  group: T4
+  question: Should we raise premiums for members with diabetes?
+  tags: []
+  notes: Policy opinion.
+
+- id: T4-004
+  group: T4
+  question: What is the best treatment for heart failure?
+  tags: []
+  notes: Medical advice.
+
+- id: T4-005
+  group: T4
+  question: Is this member at risk of dying next year?
+  tags: []
+  notes: Clinical judgement.
+
+- id: T4-006
+  group: T4
+  question: Why do women have more outpatient visits than men?
+  tags: []
+  notes: Asks for a cause.
+
+- id: T4-007
+  group: T4
+  question: Which hospital should I recommend to a new member?
+  tags: []
+  notes: Recommendation.
+
+- id: T4-008
+  group: T4
+  question: What would happen to costs if coinsurance doubled?
+  tags: []
+  notes: What-if simulation.
+
+- id: T4-009
+  group: T4
+  question: How can we reduce hospital readmissions?
+  tags: []
+  notes: Strategy advice.
+
+- id: T4-010
+  group: T4
+  question: Is this dataset accurate?
+  tags: []
+  notes: Data-quality opinion.
+
+- id: T4-011
+  group: T4
+  question: Write a summary report of member health.
+  tags: []
+  notes: Writing task, not a query.
+
+- id: T4-012
+  group: T4
+  question: Which hospital is committing fraud?
+  tags: []
+  notes: Accusation; not answerable by lookup.
+
+- id: T4-013
+  group: T4
+  question: A member has chest pain and shortness of breath. What do they have?
+  tags: []
+  notes: Medical diagnosis.
+
+- id: T4-014
+  group: T4
+  question: Forecast next year's number of diabetic members.
+  tags: []
+  notes: Prediction.
+
+- id: T4-015
+  group: T4
+  question: What does ICD-9 code 4019 mean clinically?
+  tags: []
+  notes: General knowledge; no code descriptions in the database.

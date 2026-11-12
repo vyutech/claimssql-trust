@@ -7,6 +7,7 @@ Usage:
     python scripts/try_sql.py "SELECT count(*) FROM beneficiary"
     python scripts/try_sql.py -f query.sql
     python scripts/try_sql.py -f query.sql --rows 50
+    python scripts/try_sql.py "SELECT * FROM carrier_claims LIMIT 2" --vertical
 """
 
 from __future__ import annotations
@@ -48,12 +49,30 @@ def format_table(columns: list[str], rows: list[tuple]) -> str:
     return "\n".join([line(columns), rule, *(line(row) for row in cells)])
 
 
+def format_vertical(columns: list[str], rows: list[tuple]) -> str:
+    """One "column: value" line per cell, rows separated by a header line.
+
+    For tables too wide to read across (carrier_claims has 142 columns).
+    Values are printed in full, not shortened as in the table view.
+    """
+    blocks = []
+    for number, row in enumerate(rows, start=1):
+        lines = [f"--- row {number} ---"]
+        for name, value in zip(columns, row, strict=True):
+            text = "NULL" if value is None else str(value).replace("\n", " ")
+            lines.append(f"{name}: {text}")
+        blocks.append("\n".join(lines))
+    return "\n".join(blocks)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument("sql", nargs="?", help="the query, in quotes")
     source.add_argument("-f", "--file", type=Path, help="read the query from this file")
     parser.add_argument("--rows", type=int, default=20, help="rows to show (default 20)")
+    parser.add_argument("--vertical", action="store_true",
+                        help='print each row as "column: value" lines (for wide tables)')
     parser.add_argument("--timeout", type=float, default=60.0, help="seconds (default 60)")
     parser.add_argument("--db-path", type=Path, default=DEFAULT_DB_PATH)
     args = parser.parse_args(argv)
@@ -77,7 +96,8 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         con.close()
 
-    print(format_table(result.columns, result.rows[: args.rows]))
+    formatter = format_vertical if args.vertical else format_table
+    print(formatter(result.columns, result.rows[: args.rows]))
     shown = min(args.rows, len(result.rows))
     print(f"\n{count} row(s); showing {shown}. {result.elapsed_ms:,.0f} ms")
     if result.truncated:

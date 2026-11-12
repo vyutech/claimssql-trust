@@ -82,7 +82,7 @@ text requires bumping `PROMPT_VERSION` in `src/claimssql/generate/prompts.py`.
 | `python -m claimssql.schema.catalogue` | P2 | Validates the catalogue against the database; exit code 1 on mismatches |
 | `python -m claimssql.schema.context_builder` | P2 | Prints the schema context that goes into the prompt, with an approximate token count |
 | `python -m claimssql.eval.validate_benchmark` | P3 | Reads `benchmark/questions.yaml` (never modifies it), checks every record, runs every gold SQL read-only and writes `benchmark/questions.jsonl` with `gold_result_hash` and `split`, plus previews and `benchmark_composition.csv`. `--no-split` while writing questions; `--dry-run` writes nothing. Exit code 1 on invalid records or failing gold SQL. |
-| `python scripts/try_sql.py "SELECT ..."` | P3 | Runs one query read-only and prints the first 20 rows, the row count and the time. `-f query.sql` reads the query from a file. |
+| `python scripts/try_sql.py "SELECT ..."` | P3 | Runs one query read-only and prints the first 20 rows, the row count and the time. `-f query.sql` reads the query from a file; `--vertical` prints each row as `column: value` lines for wide tables. |
 | `python scripts/smoke_generate.py` | P4 | Runs the first 10 questions of `questions.jsonl` on every model (7 calls per question per model), writes `results/runs/smoke.jsonl` and prints cache hits/misses, calls and average seconds per call. `--n`, `--models`, `--question "..."`. Resumable through the disk cache. |
 
 ## Repo layout

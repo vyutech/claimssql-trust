@@ -58,3 +58,32 @@ def test_more_rows_than_the_benchmark_limit(db_path):
     result = run(db_path, "SELECT * FROM range(10500)")
     assert result.returncode == 0, result.stderr
     assert "10,500 row(s)" in result.stdout and "WARNING" in result.stdout
+
+
+def test_vertical_prints_one_column_per_line(db_path):
+    sql = "SELECT DESYNPUF_ID, BENE_DEATH_DT, year FROM beneficiary ORDER BY 3, 1 LIMIT 2"
+    result = run(db_path, sql, "--vertical")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.splitlines() == [
+        "--- row 1 ---",
+        "DESYNPUF_ID: 000A",
+        "BENE_DEATH_DT: NULL",
+        "year: 2008",
+        "--- row 2 ---",
+        "DESYNPUF_ID: 000B",
+        "BENE_DEATH_DT: NULL",
+        "year: 2008",
+        "",
+        result.stdout.splitlines()[-1],
+    ]
+    assert result.stdout.splitlines()[-1].startswith("2 row(s); showing 2.")
+
+
+def test_vertical_respects_row_limit_and_does_not_shorten_values(db_path):
+    long_text = "x" * 60
+    result = run(db_path, f"SELECT '{long_text}' AS t, range AS n FROM range(5)",
+                 "--vertical", "--rows", "2")  # fmt: skip
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.count("--- row") == 2
+    assert f"t: {long_text}" in result.stdout  # the table view would cut this at 40
+    assert "5 row(s); showing 2." in result.stdout
