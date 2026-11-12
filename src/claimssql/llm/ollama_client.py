@@ -44,8 +44,9 @@ class OllamaClient:
             "model": self.model,
             "messages": messages,
             "stream": False,
-            # Thinking models otherwise reason for minutes on CPU before answering.
-            "think": bool(self.options.get("think", False)),
+            # false: thinking models otherwise reason for minutes on CPU before
+            # answering. Some models have no "off" and take a level ("low") instead.
+            "think": self.options.get("think", False),
             "options": run_options,
         }
         if json_mode:

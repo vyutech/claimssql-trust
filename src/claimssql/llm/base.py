@@ -25,6 +25,15 @@ class LLMError(Exception):
     """A call failed for good (after retries). Never contains the API key."""
 
 
+class RateLimitStop(LLMError):
+    """The provider asks for a long wait (e.g. a daily limit). Not worth sleeping
+    through: stop the run cleanly and resume later - the cache keeps the progress."""
+
+
+class CacheMiss(LLMError):
+    """A cache-only client was asked for a call that is not in the cache."""
+
+
 class LLMClient(Protocol):
     provider: str
     model: str

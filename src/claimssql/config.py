@@ -29,6 +29,8 @@ class ModelConfig(BaseModel):
     key: str = Field(min_length=1)
     provider: Literal["ollama", "groq"]
     model: str = Field(min_length=1)
+    # benchmark = in the full runs; demo = live demo and small tests only.
+    use: Literal["benchmark", "demo"] = "benchmark"
     # Per-model call settings (think, num_ctx, reasoning_effort, max_tokens).
     options: dict[str, bool | int | float | str] = Field(default_factory=dict)
 

@@ -15,13 +15,16 @@ from typing import Any
 
 import httpx
 
-from claimssql.llm.base import LLMError, LLMResponse, Message, check_options
+from claimssql.llm.base import LLMError, LLMResponse, Message, RateLimitStop, check_options
 
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 ALLOWED_OPTIONS = {"reasoning_effort", "max_tokens"}
 MAX_RETRIES = 8
 BASE_DELAY_S = 2.0
 MAX_DELAY_S = 120.0
+# A per-minute limit clears within a minute. A longer wait means a daily limit:
+# stop instead of sleeping for hours.
+MAX_RATE_LIMIT_WAIT_S = 90.0
 
 
 def retry_delay(attempt: int, retry_after: str | None, rng: random.Random) -> float:
@@ -34,6 +37,13 @@ def retry_delay(attempt: int, retry_after: str | None, rng: random.Random) -> fl
         except ValueError:
             pass  # not a number of seconds: fall back to our own backoff
     return min(BASE_DELAY_S * 2**attempt, MAX_DELAY_S) + jitter
+
+
+def _too_long(retry_after: str | None) -> bool:
+    try:
+        return retry_after is not None and float(retry_after) > MAX_RATE_LIMIT_WAIT_S
+    except ValueError:
+        return False
 
 
 class GroqClient:
@@ -102,6 +112,11 @@ class GroqClient:
                 if response.status_code != 429 and response.status_code < 500:
                     break  # other 4xx: our request is wrong, retrying cannot help
                 retry_after = response.headers.get("retry-after")
+                if response.status_code == 429 and _too_long(retry_after):
+                    raise RateLimitStop(
+                        f"groq rate limit: asked to wait {retry_after} s "
+                        f"(more than {MAX_RATE_LIMIT_WAIT_S:g} s) - {response.text[:200]}"
+                    )
             if attempt < MAX_RETRIES:
                 self._sleep(retry_delay(attempt, retry_after, self._rng))
         raise LLMError(f"groq call failed: {last_problem}")

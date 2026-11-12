@@ -4,7 +4,7 @@ Measures how often small open LLMs hallucinate SQL on healthcare claims data
 (CMS DE-SynPUF Sample 1), and whether a verification layer lets them abstain
 instead of returning confident wrong answers.
 
-Status: **P5 — verification** (V1 schema check, V2 dry run, V3 self-consistency, decision rules).
+Status: **P6 — evaluation** (benchmark runner, scoring, metrics, report; full run pending).
 
 ## Benchmark
 
@@ -98,11 +98,36 @@ each configuration, without calling the model again:
 Otherwise it abstains with one reason code: `MODEL_REFUSED`, `SCHEMA_UNKNOWN`,
 `EXEC_ERROR`, `LOW_AGREEMENT` or `PARSE_ERROR`.
 
+## Running the benchmark
+
+The run is split in two stages that share the LLM disk cache, because the models
+run on a Kaggle GPU and the database lives on the laptop:
+
+1. **generate** (Kaggle): `python -m claimssql.eval.run_benchmark --stage generate --run-id full`
+   asks every benchmark model every question (7 calls each). It needs only
+   `benchmark/questions.jsonl` and `schema/catalogue.yaml`.
+2. Copy `results/cache/` from Kaggle to the laptop. Both machines must be on the
+   same commit: the cache key includes the prompt text.
+3. **verify** (laptop): `python -m claimssql.eval.run_benchmark --stage verify --run-id full`
+   makes no model calls. It fails if a cached answer is missing, runs V1–V3
+   against the database and writes `results/runs/full.jsonl`.
+4. **report** (laptop): `python -m claimssql.eval.report --run-id full`.
+
+Scoring puts each question into one of five outcome regions (answerable: correct,
+wrong, abstained; infeasible: abstained, answered). The Reliability Score RS_c
+gives +1 for a correct answer or a justified abstention, 0 for abstaining on an
+answerable question and −c for a wrong answer or an answer to an infeasible
+question. τ for C4 is chosen per model on the dev split (highest RS_10); all
+other numbers are reported on the test split.
+
+Models marked `use: benchmark` in `configs/models.yaml` take part in the run;
+`use: demo` (Groq) is only for the demo and small tests.
+
 ## Command-line tools
 
 | Command | Phase | What it does |
 |---|---|---|
-| `python scripts/ping_models.py` | P0 | Sends one tiny JSON-mode prompt to every model in `configs/models.yaml` |
+| `python scripts/ping_models.py` | P0 | Sends one tiny JSON-mode prompt to every model in `configs/models.yaml`. `--only <key>` pings one model; `mid_oss` is not installed on the laptop, so it fails there. |
 | `python -m claimssql.db.load_synpuf` | P1 | Builds `data/claims.duckdb` (4 tables) from `data/raw/`; writes `row_counts.csv` and `load_checks.csv` to `results/tables/`. Safe to re-run. |
 | `python -m claimssql.db.profile` | P1 | Writes `column_profile.csv` and `low_cardinality_values.json` to `results/tables/` |
 | `python scripts/make_catalogue.py` | P2 | Drafts `schema/catalogue.yaml` from the database, the column profile and the CMS codebook (needs `pip install -e ".[catalogue]"`). Never overwrites an existing catalogue; use `--out` for a fresh draft. |
@@ -112,6 +137,8 @@ Otherwise it abstains with one reason code: `MODEL_REFUSED`, `SCHEMA_UNKNOWN`,
 | `python scripts/try_sql.py "SELECT ..."` | P3 | Runs one query read-only and prints the first 20 rows, the row count and the time. `-f query.sql` reads the query from a file; `--vertical` prints each row as `column: value` lines for wide tables. |
 | `python scripts/smoke_generate.py` | P4 | Runs the first 10 questions of `questions.jsonl` on every model (7 calls per question per model), writes `results/runs/smoke.jsonl` and prints cache hits/misses, calls and average seconds per call. `--n`, `--models`, `--question "..."`. Resumable through the disk cache. |
 | `python -m claimssql.verify.schema_check` | P5 | Runs the schema check (V1) on every gold query in `questions.jsonl`. All must pass; a failure would be a false positive in V1. Exit code 1 if any fails. |
+| `python -m claimssql.eval.run_benchmark --stage generate\|verify\|all` | P6 | Runs the benchmark. `generate` makes the LLM calls (no database needed, resumable through the cache); `verify` re-reads them from the cache, runs V1–V3 and appends to `results/runs/<run-id>.jsonl`. Options: `--run-id`, `--models`, `--groups`, `--split`, `--ids`, `--limit`. Exit code 2 = stopped by a rate limit; run again to continue. |
+| `python -m claimssql.eval.report --run-id X` | P6 | Scores a run offline and writes the report tables (`e1`–`e5`, `outcomes_confusion.csv`, `tau_selection.csv`, `failures.jsonl`) to `results/tables/`. |
 
 ## Repo layout
 

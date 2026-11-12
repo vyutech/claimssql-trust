@@ -1,22 +1,36 @@
 # The ONLY place model names live. Code refers to models by `key`.
-# provider: ollama (local) | groq (OpenAI-compatible API)
+# provider: ollama (local or Kaggle) | groq (OpenAI-compatible API)
 #
-# options are the per-model settings decided in P0 ("Model settings" in the spec).
-# They are part of the cache key, so changing one never reuses old answers.
-#   think             (ollama) false = no reasoning phase before the answer
+# use: benchmark = part of the full benchmark runs (the default set for
+#                  run_benchmark.py); these run on a Kaggle GPU through Ollama
+#      demo      = only for the live demo and small tests (Groq's free tier
+#                  allows too few calls per day for the benchmark)
+#
+# options are the per-model settings ("Model settings" in the spec). They are
+# part of the cache key, so changing one never reuses old answers.
+#   think             (ollama) false = no reasoning phase before the answer.
+#                     gpt-oss cannot switch reasoning off; it takes low/medium/high.
 #   num_ctx           (ollama) context window in tokens; the schema prompt is ~2,800
 #   reasoning_effort  (groq)   how much hidden reasoning the model may do
-#   max_tokens        cap on generated tokens per call (for groq this includes reasoning)
+#   max_tokens        cap on generated tokens per call (includes reasoning tokens)
 models:
   - key: qwen
     provider: ollama
     model: "qwen3.5:4b"
+    use: benchmark
     options: {think: false, num_ctx: 8192, max_tokens: 600}
   - key: gemma
     provider: ollama
     model: "gemma4:e4b"
+    use: benchmark
     options: {think: false, num_ctx: 8192, max_tokens: 600}
+  - key: mid_oss            # mid-size model; too large for the laptop, runs on Kaggle
+    provider: ollama
+    model: "gpt-oss:20b"
+    use: benchmark
+    options: {think: low, num_ctx: 8192, max_tokens: 1500}
   - key: groq
     provider: groq
     model: "openai/gpt-oss-20b"
+    use: demo
     options: {reasoning_effort: low, max_tokens: 1500}
