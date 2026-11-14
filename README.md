@@ -106,12 +106,15 @@ run on a Kaggle GPU and the database lives on the laptop:
 1. **generate** (Kaggle): `python -m claimssql.eval.run_benchmark --stage generate --run-id full`
    asks every benchmark model every question (7 calls each). It needs only
    `benchmark/questions.jsonl` and `schema/catalogue.yaml`.
-2. Copy `results/cache/` from Kaggle to the laptop. Both machines must be on the
+2. Copy the cache from Kaggle to the laptop (`scripts/merge_cache.py`). Both machines must be on the
    same commit: the cache key includes the prompt text.
 3. **verify** (laptop): `python -m claimssql.eval.run_benchmark --stage verify --run-id full`
    makes no model calls. It fails if a cached answer is missing, runs V1–V3
    against the database and writes `results/runs/full.jsonl`.
 4. **report** (laptop): `python -m claimssql.eval.report --run-id full`.
+
+The Kaggle side is `notebooks/kaggle_generate.ipynb`; the click-by-click steps are in
+[docs/KAGGLE.md](docs/KAGGLE.md).
 
 Scoring puts each question into one of five outcome regions (answerable: correct,
 wrong, abstained; infeasible: abstained, answered). The Reliability Score RS_c
@@ -139,6 +142,8 @@ Models marked `use: benchmark` in `configs/models.yaml` take part in the run;
 | `python -m claimssql.verify.schema_check` | P5 | Runs the schema check (V1) on every gold query in `questions.jsonl`. All must pass; a failure would be a false positive in V1. Exit code 1 if any fails. |
 | `python -m claimssql.eval.run_benchmark --stage generate\|verify\|all` | P6 | Runs the benchmark. `generate` makes the LLM calls (no database needed, resumable through the cache); `verify` re-reads them from the cache, runs V1–V3 and appends to `results/runs/<run-id>.jsonl`. Options: `--run-id`, `--models`, `--groups`, `--split`, `--ids`, `--limit`. Exit code 2 = stopped by a rate limit; run again to continue. |
 | `python -m claimssql.eval.report --run-id X` | P6 | Scores a run offline and writes the report tables (`e1`–`e5`, `outcomes_confusion.csv`, `tau_selection.csv`, `failures.jsonl`) to `results/tables/`. |
+| `python scripts/make_kaggle_bundle.py` | P6 | Zips what generation needs (`src/`, `configs/`, the catalogue, `questions.jsonl`, `pyproject.toml`) into `dist/claimssql_bundle.zip`, with the git commit and a cache-key fingerprint inside. Warns about uncommitted changes. |
+| `python scripts/merge_cache.py cache_qwen.zip ...` | P6 | Copies the LLM cache downloaded from Kaggle into `results/cache/`, skipping files already present. Warns if a zip was made from a different commit. |
 
 ## Repo layout
 
@@ -148,10 +153,11 @@ Most folders are empty until their phase is built.
 configs/            models.yaml, experiment.yaml
 data/               raw CMS CSVs and DuckDB files (git-ignored)
 schema/             catalogue.yaml
-docs/               CMS codebook PDF (source of the catalogue descriptions)
+docs/               CMS codebook PDF (source of the catalogue descriptions), KAGGLE.md
 benchmark/          questions.yaml (owner-written), questions.jsonl (generated),
                     TEMPLATE.md, trap_tags.yaml, gold_previews/ (git-ignored)
-scripts/            ping_models.py, make_catalogue.py, try_sql.py, smoke_generate.py
+scripts/            ping_models.py, make_catalogue.py, try_sql.py, smoke_generate.py,
+                    make_kaggle_bundle.py, merge_cache.py
 src/claimssql/
   config.py         loads configs/ and .env
   db/               loading and profiling the claims data
@@ -164,7 +170,7 @@ src/claimssql/
   finetune/         training-data generation (optional)
   api/              FastAPI service
 app/                Streamlit UI
-notebooks/          analysis
+notebooks/          kaggle_generate.ipynb (generation on Kaggle), analysis
 results/            runs/, tables/, figures/ (cache/ is git-ignored)
 tests/
 ```

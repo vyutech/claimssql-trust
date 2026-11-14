@@ -107,13 +107,18 @@ def stage_generate(
     context: str,
     experiment: ExperimentConfig,
     cache_dir: Path,
+    summary_path: Path | None = None,
 ) -> int:
+    """Fill the cache. If `summary_path` is given, also write per-model counts
+    there as JSON (the Kaggle notebook prints that file)."""
     exit_code = EXIT_OK
+    summary: dict[str, dict[str, Any]] = {}
     # Model by model: a server loads each model once instead of swapping per question.
     for model in models:
         client = make_client(model, PROMPT_VERSION, cache_dir=cache_dir)
         total, calls, live_calls, live_seconds = len(questions), 0, 0, 0.0
         live_questions, live_wall = 0, 0.0
+        done, status = 0, "complete"
         print(f"[{model.key}] generate: {total} question(s), {model.model}", flush=True)
         for index, question in enumerate(questions, start=1):
             started = time.perf_counter()
@@ -126,12 +131,15 @@ def stage_generate(
                       f"{exc}\n[{model.key}] Progress is in the cache. Run the same command "
                       "again later to continue.", flush=True)
                 exit_code = EXIT_RATE_LIMIT
+                status = "stopped by rate limit"
                 break
             except LLMError as exc:
                 print(f"[{model.key}] {index}/{total} {question['id']}: FAILED - {exc}",
                       flush=True)
                 exit_code = max(exit_code, EXIT_ERRORS)
+                status = "finished with failed questions"
                 continue
+            done += 1
             wall = time.perf_counter() - started
             new_calls = [a for g in generations for a in g.attempts if not a.cached]
             calls += sum(len(g.attempts) for g in generations)
@@ -148,6 +156,19 @@ def stage_generate(
                   f"ETA {_clock(per_question * (total - index))}", flush=True)
         print(f"[{model.key}] cache hits {client.cache.hits}, misses {client.cache.misses}",
               flush=True)
+        summary[model.key] = {
+            "model": model.model,
+            "status": status,
+            "questions": total,
+            "questions_done": done,
+            "calls": calls,
+            "new_calls": live_calls,
+            "cache_hits": client.cache.hits,
+            "seconds_per_new_call": round(live_seconds / live_calls, 2) if live_calls else None,
+        }
+    if summary_path is not None:
+        summary_path.parent.mkdir(parents=True, exist_ok=True)
+        summary_path.write_text(json.dumps(summary, indent=1), encoding="utf-8")
     return exit_code
 
 
@@ -310,7 +331,10 @@ def main(argv: list[str] | None = None) -> int:
 
     exit_code = EXIT_OK
     if args.stage in ("generate", "all"):
-        exit_code = stage_generate(questions, models, context, experiment, args.cache_dir)
+        exit_code = stage_generate(
+            questions, models, context, experiment, args.cache_dir,
+            summary_path=args.runs_dir / f"{args.run_id}.generate.json",
+        )  # fmt: skip
         if exit_code != EXIT_OK and args.stage == "all":
             print("generate did not finish; skipping verify.", file=sys.stderr)
             return exit_code
