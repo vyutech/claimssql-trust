@@ -2,6 +2,8 @@
 
 import json
 import random
+import subprocess
+import sys
 from pathlib import Path
 
 import httpx
@@ -275,3 +277,40 @@ def test_ollama_think_level_is_passed_through():
     mid = load_models().get("mid_oss")
     assert (mid.provider, mid.use, mid.options["think"]) == ("ollama", "benchmark", "low")
     assert load_models().get("groq").use == "demo"
+
+
+def test_generate_stage_runs_without_sqlglot_or_duckdb(tmp_path, questions_file, fake_models):
+    """On Kaggle the generate stage must not depend on the verifier libraries.
+
+    Fill a cache with the fake model, then run `--stage generate` in a fresh
+    Python process in which importing sqlglot or duckdb is made to fail.
+    """
+    cache = tmp_path / "cache"
+    catalogue = FIXTURES / "catalogue.yaml"
+    assert rb.main(["--stage", "generate", "--models", "qwen", "--questions", str(questions_file),
+                    "--cache-dir", str(cache), "--runs-dir", str(tmp_path / "runs"),
+                    "--catalogue", str(catalogue)]) == 0  # fmt: skip
+
+    script = (
+        "import sys\n"
+        "sys.modules['sqlglot'] = None  # makes 'import sqlglot' raise ImportError\n"
+        "sys.modules['duckdb'] = None\n"
+        "import claimssql.eval.fingerprint  # the notebook's key check needs neither\n"
+        "from claimssql.eval import run_benchmark as rb\n"
+        "code = rb.main(sys.argv[1:])\n"
+        "loaded = [m for m in sys.modules if m.startswith('claimssql.verify')]\n"
+        "print('VERIFY_MODULES', loaded)\n"
+        "sys.exit(code)\n"
+    )
+    args = ["--models", "qwen", "--questions", str(questions_file), "--cache-dir", str(cache),
+            "--runs-dir", str(tmp_path / "runs"), "--catalogue", str(catalogue)]  # fmt: skip
+    generate = subprocess.run([sys.executable, "-c", script, "--stage", "generate", *args],
+                              capture_output=True, text=True, timeout=120)  # fmt: skip
+    assert generate.returncode == 0, generate.stderr
+    assert "calls 21 (new 0, cached 21)" in generate.stdout  # everything came from the cache
+    assert "VERIFY_MODULES []" in generate.stdout
+
+    # The same process cannot verify: that stage is where the libraries are needed.
+    verify = subprocess.run([sys.executable, "-c", script, "--stage", "verify", *args],
+                            capture_output=True, text=True, timeout=120)  # fmt: skip
+    assert verify.returncode != 0 and "import of duckdb halted" in verify.stderr

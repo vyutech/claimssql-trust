@@ -16,13 +16,15 @@ import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-import duckdb
 import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from claimssql.config import REPO_ROOT
-from claimssql.db.connection import DEFAULT_DB_PATH, get_connection
+
+if TYPE_CHECKING:  # loading a catalogue (e.g. for generation) must not need duckdb
+    import duckdb
 
 DEFAULT_CATALOGUE_PATH = REPO_ROOT / "schema" / "catalogue.yaml"
 
@@ -223,9 +225,12 @@ def validate_against_db(
 def main() -> int:
     parser = argparse.ArgumentParser(description="Validate the catalogue against the database.")
     parser.add_argument("--catalogue", type=Path, default=DEFAULT_CATALOGUE_PATH)
-    parser.add_argument("--db-path", type=Path, default=DEFAULT_DB_PATH)
+    parser.add_argument("--db-path", type=Path, help="default: data/claims.duckdb")
     args = parser.parse_args()
 
+    from claimssql.db.connection import DEFAULT_DB_PATH, get_connection
+
+    args.db_path = args.db_path or DEFAULT_DB_PATH
     catalogue = load_catalogue(args.catalogue)
     con = get_connection(read_only=True, db_path=args.db_path)
     try:

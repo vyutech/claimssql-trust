@@ -12,6 +12,10 @@
 To move work from Kaggle to the laptop, copy results/cache/. The cache key
 includes the prompt text, so both machines must be on the same commit.
 
+The generate stage must run where there is no database and possibly an older
+sqlglot/duckdb, so this module imports the database and verifier code only
+inside the verify stage.
+
 Both stages are resumable: generate skips whatever is cached, verify skips
 question x model pairs already in the run file.
 
@@ -29,9 +33,7 @@ import json
 import sys
 import time
 from pathlib import Path
-from typing import Any
-
-import duckdb
+from typing import TYPE_CHECKING, Any
 
 from claimssql.config import (
     CACHE_DIR,
@@ -42,16 +44,17 @@ from claimssql.config import (
     load_experiment,
     load_models,
 )
-from claimssql.db.connection import DEFAULT_DB_PATH, get_connection
 from claimssql.generate.generator import Generation, generate_all
 from claimssql.generate.prompts import PROMPT_VERSION
 from claimssql.llm.base import CacheMiss, LLMError, RateLimitStop
 from claimssql.llm.factory import make_client
 from claimssql.schema.catalogue import DEFAULT_CATALOGUE_PATH, load_catalogue
 from claimssql.schema.context_builder import render_context
-from claimssql.verify.dry_run import dry_run
-from claimssql.verify.schema_check import Schema, check_sql, schema_from_catalogue
-from claimssql.verify.self_consistency import self_consistency
+
+if TYPE_CHECKING:  # names used only in type hints: no import at run time
+    import duckdb
+
+    from claimssql.verify.schema_check import Schema
 
 DEFAULT_QUESTIONS = REPO_ROOT / "benchmark" / "questions.jsonl"
 GROUPS = ("easy", "medium", "hard", "T1", "T2", "T3", "T4")
@@ -193,6 +196,11 @@ def build_record(
     experiment: ExperimentConfig,
 ) -> dict[str, Any]:
     """One run-file line: the generations plus every verifier output."""
+    # Imported here, not at the top: only the verify stage needs sqlglot/duckdb.
+    from claimssql.verify.dry_run import dry_run
+    from claimssql.verify.schema_check import check_sql
+    from claimssql.verify.self_consistency import self_consistency
+
     forced, abstain, samples = generations[0], generations[1], generations[2:]
     timeout = experiment.verify.dry_run_timeout_s
     max_rows = experiment.verify.result_row_cap
@@ -307,7 +315,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--questions", type=Path, default=DEFAULT_QUESTIONS)
     parser.add_argument("--catalogue", type=Path, default=DEFAULT_CATALOGUE_PATH)
     parser.add_argument("--cache-dir", type=Path, default=CACHE_DIR)
-    parser.add_argument("--db-path", type=Path, default=DEFAULT_DB_PATH)
+    parser.add_argument("--db-path", type=Path, help="default: data/claims.duckdb")
     parser.add_argument("--runs-dir", type=Path, default=RESULTS_RUNS_DIR)
     args = parser.parse_args(argv)
 
@@ -339,6 +347,9 @@ def main(argv: list[str] | None = None) -> int:
             print("generate did not finish; skipping verify.", file=sys.stderr)
             return exit_code
     if args.stage in ("verify", "all"):
+        from claimssql.db.connection import get_connection
+        from claimssql.verify.schema_check import schema_from_catalogue
+
         con = get_connection(read_only=True, db_path=args.db_path)
         try:
             exit_code = stage_verify(

@@ -11,12 +11,14 @@ readme = "README.md"
 requires-python = ">=3.11"
 authors = [{ name = "Vyshnavi Vadla" }]
 dependencies = [
-    "duckdb",
-    "sqlglot",
-    "httpx",
-    "pyyaml",
+    # Minimum = the versions this project is developed and tested with. Older
+    # ones can lack things the code uses (an old sqlglot broke the Kaggle run).
+    "duckdb>=2.0.0,<3",
+    "sqlglot>=30.31.0,<31",
+    "httpx>=0.28.1,<1",
+    "pyyaml>=6.0.3,<7",
     "python-dotenv",
-    "pydantic>=2",
+    "pydantic>=2.14.3,<3",
     "fastapi",
     "uvicorn",
     "streamlit",
