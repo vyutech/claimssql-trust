@@ -59,7 +59,8 @@ class GroqClient:
         rng: random.Random | None = None,
     ) -> None:
         if not api_key:
-            raise LLMError("GROQ_API_KEY is empty - paste it into .env")
+            raise LLMError("GROQ_API_KEY is not set: put it in .env locally, or add it as a "
+                           "secret in the Hugging Face Space settings")
         self.model = model
         self.options = dict(options or {})
         check_options(self.provider, self.options, ALLOWED_OPTIONS)

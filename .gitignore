@@ -34,3 +34,9 @@ dist/
 .idea/
 Thumbs.db
 .DS_Store
+
+# Generated demo data (rebuilt by scripts/build_demo_db.py)
+app_data/
+
+# Local Claude Code settings (preview launch config)
+.claude/

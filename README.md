@@ -4,7 +4,7 @@ Measures how often small open LLMs hallucinate SQL on healthcare claims data
 (CMS DE-SynPUF Sample 1), and whether a verification layer lets them abstain
 instead of returning confident wrong answers.
 
-Status: **P6 — evaluation** (benchmark runner, scoring, metrics, report; full run pending).
+Status: **P7 — demo product** (Streamlit app, API, Hugging Face deployment).
 
 ## Benchmark
 
@@ -146,6 +146,10 @@ Models marked `use: benchmark` in `configs/models.yaml` take part in the run;
 | `python -m claimssql.eval.report --run-id X` | P6 | Scores a run offline and writes the report tables (`e1`–`e5`, `outcomes_confusion.csv`, `tau_selection.csv`, `failures.jsonl`) to `results/tables/`. |
 | `python scripts/make_kaggle_bundle.py` | P6 | Zips what generation needs (`src/`, `configs/`, the catalogue, `questions.jsonl`, `pyproject.toml`) into `dist/claimssql_bundle.zip`, with the git commit and a cache-key fingerprint inside. Warns about uncommitted changes. |
 | `python scripts/merge_cache.py cache_qwen.zip ...` | P6 | Copies the LLM cache downloaded from Kaggle into `results/cache/`, skipping files already present. Warns if a zip was made from a different commit. |
+| `python scripts/build_demo_db.py` | P7 | Builds `data/demo.duckdb` (5,000 fixed random beneficiaries with all their claims) and `app_data/explorer.jsonl` (what the benchmark explorer shows) from `results/runs/full.jsonl`. |
+| `streamlit run app/streamlit_app.py` | P7 | The demo app: benchmark explorer, and live questions on the demo database through the Groq model. |
+| `uvicorn claimssql.api.main:app` | P7 | The HTTP API: `GET /health`, `GET /schema`, `POST /ask`. |
+| `python scripts/make_space_bundle.py` | P7 | Collects the Hugging Face Space's files into `dist/space/` (see [docs/DEPLOY.md](docs/DEPLOY.md)). |
 
 ## Repo layout
 
@@ -171,7 +175,9 @@ src/claimssql/
   eval/             result comparison, benchmark runner, metrics
   finetune/         training-data generation (optional)
   api/              FastAPI service
-app/                Streamlit UI
+app/                streamlit_app.py (demo app)
+app_data/           explorer.jsonl for the app (generated, git-ignored)
+deploy/             Space requirements, README header and Dockerfile
 notebooks/          kaggle_generate.ipynb (generation on Kaggle), analysis
 results/            runs/, tables/, figures/ (cache/ is git-ignored)
 tests/
