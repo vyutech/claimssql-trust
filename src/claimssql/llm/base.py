@@ -34,6 +34,22 @@ class CacheMiss(LLMError):
     """A cache-only client was asked for a call that is not in the cache."""
 
 
+class DegenerateOutput(LLMError):
+    """The model got stuck repeating itself and the server aborted the reply.
+
+    Unlike a network error this is a property of the model's output: the same
+    call (same prompt, temperature and seed) fails the same way again. So it is
+    a result, not a failure to retry: the cache stores it, and the generator
+    records the generation as DEGENERATE_OUTPUT.
+    """
+
+    def __init__(self, message: str, latency_ms: float = 0.0, cached: bool = False) -> None:
+        super().__init__(message)
+        self.message = message
+        self.latency_ms = latency_ms
+        self.cached = cached
+
+
 class LLMClient(Protocol):
     provider: str
     model: str

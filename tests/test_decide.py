@@ -4,6 +4,7 @@ import pytest
 
 from claimssql.policy.decide import (
     CONFIGS,
+    DEGENERATE_OUTPUT,
     EXEC_ERROR,
     LOW_AGREEMENT,
     MODEL_REFUSED,
@@ -27,6 +28,7 @@ def answer(sql: str) -> dict:
 REFUSAL = {"parsed": {"answerable": False, "sql": None, "confidence": 90, "reason": "no"},
            "error": None}  # fmt: skip
 UNREADABLE = {"parsed": None, "error": "PARSE_ERROR"}
+LOOPED = {"parsed": None, "error": "DEGENERATE_OUTPUT"}
 
 
 def record(**overrides) -> dict:
@@ -151,5 +153,16 @@ def test_decision_shape_and_every_reason_code_is_reachable():
         decide(record(v1=v1_bad), "C4", TAU).reason_code,
         decide(record(v2={"ok": False}), "C4", TAU).reason_code,
         decide(record(v3={"agreement": 0.0, "greedy_in_majority": False}), "C4", TAU).reason_code,
+        decide(record(abstain=LOOPED), "C4", TAU).reason_code,
     }
     assert seen == set(REASON_CODES)
+
+
+def test_degenerate_output_is_its_own_abstention_reason():
+    looped = outcome(record(abstain=LOOPED))
+    assert looped["C0"] == (True, FORCED_SQL, None)  # C0 uses the forced generation
+    for name in ("C1", "C2", "C3", "C4"):
+        assert looped[name] == (False, None, DEGENERATE_OUTPUT)
+    assert outcome(record(forced=LOOPED))["C0"] == (False, None, DEGENERATE_OUTPUT)
+    # Not mistaken for an unreadable reply, and still separate from it.
+    assert outcome(record(abstain=UNREADABLE))["C1"] == (False, None, PARSE_ERROR)

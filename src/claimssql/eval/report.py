@@ -6,6 +6,9 @@ Reads results/runs/<run_id>.jsonl and writes to results/tables/:
   e1_ex_by_model_difficulty.csv  execution accuracy by model, difficulty and config
   e2_rs_by_config_penalty.csv    coverage, risk and Reliability Score by model and config
   e3_taxonomy.csv                kinds of harmful answers by model and config
+  e3_generation_failures.csv     unusable replies per model: PARSE_ERROR and
+                                 DEGENERATE_OUTPUT (the model looped)
+  abstain_reasons.csv            abstentions by reason code, model and config
   e4_signal_auroc.csv            how well each abstention signal spots wrong answers
   e4_risk_coverage.csv           C4 at every tau (risk-coverage curve)
   e5_latency_cost.csv            latency, calls and tokens per model
@@ -33,10 +36,12 @@ from claimssql.eval import metrics
 from claimssql.eval.run_benchmark import read_run
 from claimssql.eval.score import HARMFUL, REGIONS, score_records, verifier_outputs
 from claimssql.eval.taxonomy import LABELS, LowCardinality, label_case, normalise_low_cardinality
-from claimssql.policy.decide import CONFIGS
+from claimssql.policy.decide import CONFIGS, REASON_CODES
 from claimssql.schema.catalogue import DEFAULT_CATALOGUE_PATH, load_catalogue
 
 REPORT_SPLITS = ("test", "all")
+FAILURE_KEYS = ["questions", "generations", "parse_error", "degenerate_output",
+                "degenerate_greedy", "questions_with_degenerate"]  # fmt: skip
 DIFFICULTIES = ("easy", "medium", "hard")
 RS_COLUMNS = [f"rs_{penalty}" for penalty in metrics.PENALTIES]
 
@@ -82,6 +87,7 @@ def build_tables(
         ["model", "tau", "dev_n", "coverage", "risk", *RS_COLUMNS, "chosen"], tau_rows)  # fmt: skip
 
     e1, e2, e3, auroc_rows, rc_rows, confusion = [], [], [], [], [], []
+    reason_rows, failure_rows = [], []
     failures: dict[tuple[str, str], dict[str, Any]] = {}
     for split in REPORT_SPLITS:
         for model, model_records in models.items():
@@ -130,6 +136,12 @@ def build_tables(
                         }  # fmt: skip
                 e3.append((split, model, config, sum(labels.values()),
                            *(labels[label] for label in LABELS)))  # fmt: skip
+                reasons = metrics.abstain_reasons(cases, REASON_CODES)
+                reason_rows.append((split, model, config, sum(reasons.values()),
+                                    *(reasons[code] for code in REASON_CODES)))  # fmt: skip
+
+            failed = metrics.generation_failures(subset)
+            failure_rows.append((split, model, *(failed[key] for key in FAILURE_KEYS)))
 
             for row in metrics.signal_table(subset):
                 auroc_rows.append((split, model, row["signal"], row["n"], row["n_wrong"],
@@ -161,6 +173,9 @@ def build_tables(
         ["split", "model", "tau", "n", "answered", "coverage", "risk", *RS_COLUMNS], rc_rows)
     tables["e5_latency_cost.csv"] = (["model_key", "model", *cost_keys], cost_rows)
     tables["outcomes_confusion.csv"] = (["split", "model", "config", "n", *REGIONS], confusion)
+    tables["abstain_reasons.csv"] = (
+        ["split", "model", "config", "n_abstained", *REASON_CODES], reason_rows)
+    tables["e3_generation_failures.csv"] = (["split", "model", *FAILURE_KEYS], failure_rows)
     return tables, list(failures.values()), taus
 
 

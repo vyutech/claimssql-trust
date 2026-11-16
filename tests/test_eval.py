@@ -315,10 +315,52 @@ def read(path) -> list[dict]:
 
 def test_report_writes_every_table(report_dir):
     assert sorted(p.name for p in report_dir.iterdir()) == [
-        "e1_ex_by_model_difficulty.csv", "e2_rs_by_config_penalty.csv", "e3_taxonomy.csv",
-        "e4_risk_coverage.csv", "e4_signal_auroc.csv", "e5_latency_cost.csv",
-        "failures.jsonl", "outcomes_confusion.csv", "tau_selection.csv",
+        "abstain_reasons.csv", "e1_ex_by_model_difficulty.csv", "e2_rs_by_config_penalty.csv",
+        "e3_generation_failures.csv", "e3_taxonomy.csv", "e4_risk_coverage.csv",
+        "e4_signal_auroc.csv", "e5_latency_cost.csv", "failures.jsonl",
+        "outcomes_confusion.csv", "tau_selection.csv",
     ]  # fmt: skip
+
+
+def test_report_counts_abstain_reasons_and_failed_generations(report_dir):
+    reasons = {(r["split"], r["config"]): r for r in read(report_dir / "abstain_reasons.csv")}
+    # Test split, C3: t6 t7 refused (MODEL_REFUSED), t10 unreadable (PARSE_ERROR),
+    # t4 unknown column (SCHEMA_UNKNOWN), t5 does not run (EXEC_ERROR).
+    c3 = reasons[("test", "C3")]
+    got = [c3[k] for k in ("n_abstained", "MODEL_REFUSED", "PARSE_ERROR", "SCHEMA_UNKNOWN",
+                           "EXEC_ERROR", "DEGENERATE_OUTPUT")]  # fmt: skip
+    assert got == ["5", "2", "1", "1", "1", "0"]
+    assert reasons[("test", "C4")]["LOW_AGREEMENT"] == "2"  # t2 and t8
+
+    (test_row,) = [r for r in read(report_dir / "e3_generation_failures.csv")
+                   if r["split"] == "test"]  # fmt: skip
+    assert (test_row["questions"], test_row["generations"], test_row["parse_error"],
+            test_row["degenerate_output"]) == ("10", "70", "1", "0")  # fmt: skip
+
+
+def test_degenerate_output_is_counted_per_model():
+    looped = {"attempts": [{"latency_ms": 900.0, "prompt_tokens": 0, "completion_tokens": 0,
+                            "raw": "", "cached": False, "parse_problem": "looped"}],
+              "latency_ms": 900.0, "prompt_tokens": 0, "completion_tokens": 0,
+              "parsed": None, "error": "DEGENERATE_OUTPUT"}  # fmt: skip
+    one = make_record("t1", "easy", "test", "ok", "ok", 0.8, 90, 10)
+    one["samples"] = [*one["samples"][:2], looped, *one["samples"][3:]]
+    two = make_record("t2", "hard", "test", "ok", "ok", 1.0, 90, 10)
+    two["abstain"] = looped
+    clean = make_record("t3", "easy", "test", "ok", "ok", 1.0, 90, 10)
+
+    assert metrics.generation_failures([one, two, clean]) == {
+        "questions": 3, "generations": 21, "parse_error": 0, "degenerate_output": 2,
+        "degenerate_greedy": 1, "questions_with_degenerate": 2,
+    }  # fmt: skip
+    case = score_record(two, "C1")
+    assert (case.answered, case.reason_code, case.region) == (
+        False, "DEGENERATE_OUTPUT", "answerable_abstained",
+    )  # fmt: skip
+    # A loop is an abstention, never a harmful answer, so the taxonomy leaves it out.
+    assert taxonomy.label_case(two, case, LOW_CARD) is None
+    # Its latency still counts towards the cost of the question.
+    assert metrics.latency_cost([two])["c1_latency_per_question_ms"] == 900
 
 
 def test_report_tau_and_main_table(report_dir):

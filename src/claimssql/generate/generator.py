@@ -7,6 +7,8 @@
 Each reply is cleaned (<think> blocks and code fences removed) and parsed as
 {"answerable", "sql", "confidence", "reason"}. A reply that cannot be parsed
 gets ONE retry; if that fails too, the generation is marked PARSE_ERROR.
+A reply the server aborted because the model looped is marked
+DEGENERATE_OUTPUT straight away (no retry).
 """
 
 from __future__ import annotations
@@ -20,9 +22,11 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 
 from claimssql.config import GenerationConfig
 from claimssql.generate.prompts import RETRY_MESSAGE, build_abstain, build_forced
-from claimssql.llm.base import LLMClient, Message
+from claimssql.llm.base import DegenerateOutput, LLMClient, Message
 
 PARSE_ERROR = "PARSE_ERROR"
+# The model looped and the server aborted the reply (see llm.base.DegenerateOutput).
+DEGENERATE_OUTPUT = "DEGENERATE_OUTPUT"
 
 _THINK_BLOCK = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
 _CODE_FENCE = re.compile(r"^```[a-zA-Z0-9_-]*\s*\n?(.*?)\n?```$", re.DOTALL)
@@ -97,7 +101,7 @@ class Generation:
     seed: int
     raw: str = ""  # the last reply, exactly as the model wrote it
     parsed: dict[str, Any] | None = None
-    error: str | None = None  # None or PARSE_ERROR
+    error: str | None = None  # None, PARSE_ERROR or DEGENERATE_OUTPUT
     attempts: list[Attempt] = field(default_factory=list)
     # Totals over all attempts (a retry costs time and tokens too).
     latency_ms: float = 0.0
@@ -120,7 +124,18 @@ def generate_one(
     generation = Generation(prompt=prompt, mode=mode, temperature=temperature, seed=seed)
     conversation = list(messages)
     for _ in range(max_parse_retries + 1):
-        response = client.chat(conversation, temperature=temperature, seed=seed, json_mode=True)
+        try:
+            response = client.chat(conversation, temperature=temperature, seed=seed,
+                                   json_mode=True)  # fmt: skip
+        except DegenerateOutput as exc:
+            # No retry: there is no reply to correct, and the same call loops again.
+            generation.attempts.append(Attempt(
+                raw="", latency_ms=exc.latency_ms, prompt_tokens=0, completion_tokens=0,
+                cached=exc.cached, parse_problem=exc.message,
+            ))  # fmt: skip
+            generation.latency_ms += exc.latency_ms
+            generation.error = DEGENERATE_OUTPUT
+            return generation
         attempt = Attempt(
             raw=response.text,
             latency_ms=response.latency_ms,

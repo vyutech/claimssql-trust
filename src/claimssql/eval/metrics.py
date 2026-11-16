@@ -126,6 +126,36 @@ def signal_table(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     ]
 
 
+# --------------------------------------------- failed generations ----
+
+
+def generation_failures(records: list[dict[str, Any]]) -> dict[str, int]:
+    """How often a model's replies were unusable, over all 7 generations per
+    question: unreadable (PARSE_ERROR) or looped and aborted (DEGENERATE_OUTPUT)."""
+    generations = [g for r in records for g in _generations(r)]
+    greedy = [g for r in records for g in (r["forced"], r["abstain"])]
+
+    def count(items: list[dict[str, Any]], code: str) -> int:
+        return sum(g.get("error") == code for g in items)
+
+    return {
+        "questions": len(records),
+        "generations": len(generations),
+        "parse_error": count(generations, "PARSE_ERROR"),
+        "degenerate_output": count(generations, "DEGENERATE_OUTPUT"),
+        "degenerate_greedy": count(greedy, "DEGENERATE_OUTPUT"),
+        "questions_with_degenerate": sum(
+            any(g.get("error") == "DEGENERATE_OUTPUT" for g in _generations(r)) for r in records
+        ),
+    }
+
+
+def abstain_reasons(cases: list[ScoredCase], reason_codes: tuple[str, ...]) -> dict[str, int]:
+    """Abstentions per reason code (an abstention has exactly one)."""
+    counts = Counter(case.reason_code for case in cases if not case.answered)
+    return {code: counts.get(code, 0) for code in reason_codes}
+
+
 # ------------------------------------------------------ latency and cost ----
 
 

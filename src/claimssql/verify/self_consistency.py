@@ -6,8 +6,9 @@ scatters. So we run the k sampled queries and group them by result.
 
   * Samples with the same SQL (after normalisation) are executed once.
   * Samples whose results have the same hash form a cluster.
-  * A sample that refused, could not be parsed, failed to execute, or returned
-    more than the row cap agrees with nobody: it is its own outcome.
+  * A sample that refused, could not be parsed, looped (DEGENERATE_OUTPUT),
+    failed to execute, or returned more than the row cap agrees with nobody:
+    it is its own outcome.
   * agreement = size of the largest cluster / k.
 """
 
@@ -25,6 +26,7 @@ from claimssql.eval.compare import MAX_ROWS
 from claimssql.verify.dry_run import DIALECT, DryRunResult, dry_run
 
 NO_SQL = "no_sql"  # the sample refused or was a PARSE_ERROR
+DEGENERATE = "degenerate"  # the model looped and the reply was aborted (DEGENERATE_OUTPUT)
 FAILED = "failed"  # the SQL did not execute
 TRUNCATED = "truncated"  # more rows than the cap: no reliable hash
 
@@ -61,12 +63,20 @@ def self_consistency(
     greedy_hash: str | None,
     timeout_s: float = 30.0,
     max_rows: int = MAX_ROWS,
+    sample_errors: list[str | None] | None = None,
 ) -> SelfConsistencyResult:
     """`sample_sqls`: the SQL of each of the k samples (None = no SQL).
-    `greedy_hash`: result hash of the greedy answer, from its own dry run."""
+    `greedy_hash`: result hash of the greedy answer, from its own dry run.
+    `sample_errors`: each sample's generation error, if any; DEGENERATE_OUTPUT
+    gets its own outcome so it can be counted, but like any failure it agrees
+    with nobody."""
+    errors = sample_errors or [None] * len(sample_sqls)
     executed: dict[str, DryRunResult] = {}
     outcomes: list[str] = []
-    for sql in sample_sqls:
+    for sql, error in zip(sample_sqls, errors, strict=True):
+        if error == "DEGENERATE_OUTPUT":
+            outcomes.append(DEGENERATE)
+            continue
         if not sql or not sql.strip():
             outcomes.append(NO_SQL)
             continue
@@ -82,7 +92,7 @@ def self_consistency(
             outcomes.append(result.result_hash)
 
     k = len(sample_sqls)
-    clusters = Counter(o for o in outcomes if o not in (NO_SQL, FAILED, TRUNCATED))
+    clusters = Counter(o for o in outcomes if o not in (NO_SQL, FAILED, TRUNCATED, DEGENERATE))
     sizes = sorted(clusters.values(), reverse=True)
     if not sizes:
         return SelfConsistencyResult(

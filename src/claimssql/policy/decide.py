@@ -5,7 +5,8 @@ is never called again. A record holds:
 
     record["forced"]   the forced-prompt greedy generation   (generator output)
     record["abstain"]  the abstain-prompt greedy generation
-        each: {"parsed": {"answerable", "sql", ...} or None, "error": None or "PARSE_ERROR"}
+        each: {"parsed": {"answerable", "sql", ...} or None,
+               "error": None, "PARSE_ERROR" or "DEGENERATE_OUTPUT"}
     record["v1"]  SchemaCheckResult.to_dict()  for the abstain greedy SQL (or None)
     record["v2"]  DryRunResult.to_dict()       for the abstain greedy SQL (or None)
     record["v3"]  SelfConsistencyResult.to_dict() over the k samples    (or None)
@@ -32,7 +33,10 @@ SCHEMA_UNKNOWN = "SCHEMA_UNKNOWN"
 EXEC_ERROR = "EXEC_ERROR"
 LOW_AGREEMENT = "LOW_AGREEMENT"
 PARSE_ERROR = "PARSE_ERROR"
-REASON_CODES = (MODEL_REFUSED, SCHEMA_UNKNOWN, EXEC_ERROR, LOW_AGREEMENT, PARSE_ERROR)
+DEGENERATE_OUTPUT = "DEGENERATE_OUTPUT"  # the model looped; the server aborted the reply
+REASON_CODES = (
+    MODEL_REFUSED, SCHEMA_UNKNOWN, EXEC_ERROR, LOW_AGREEMENT, PARSE_ERROR, DEGENERATE_OUTPUT,
+)  # fmt: skip
 
 
 class Decision(NamedTuple):
@@ -47,6 +51,8 @@ def _abstain(reason: str) -> Decision:
 
 def _generation_gate(generation: dict[str, Any] | None) -> Decision:
     """Shared first step: is there SQL to answer with at all?"""
+    if generation and generation.get("error") == DEGENERATE_OUTPUT:
+        return _abstain(DEGENERATE_OUTPUT)  # there is no reply at all
     if not generation or generation.get("error") or not generation.get("parsed"):
         return _abstain(PARSE_ERROR)  # the reply was never readable JSON
     parsed = generation["parsed"]

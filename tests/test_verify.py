@@ -225,3 +225,20 @@ def test_normalise_sql():
     # Text values keep their case: 'a' and 'A' are different queries.
     assert v3.normalise_sql("SELECT 'a'") != v3.normalise_sql("SELECT 'A'")
     assert v3.normalise_sql("SELECT  (1 ;") == "SELECT (1"  # unparseable: tidied raw text
+
+
+
+def test_degenerate_samples_agree_with_nobody_and_are_labelled(con):
+    errors = [None, "DEGENERATE_OUTPUT", None, "DEGENERATE_OUTPUT", None]
+    samples = [COUNT_ALL, None, COUNT_ALL, None, COUNT_ALL]
+    result = v3.self_consistency(con, samples, greedy_hash=H6, sample_errors=errors)
+    assert result.outcomes == [H6, v3.DEGENERATE, H6, v3.DEGENERATE, H6]
+    assert (result.agreement, result.cluster_sizes) == (0.6, [3])  # 3 of k = 5
+    assert result.greedy_in_majority
+
+    all_looped = v3.self_consistency(con, [None] * 5, greedy_hash=H6,
+                                     sample_errors=["DEGENERATE_OUTPUT"] * 5)  # fmt: skip
+    assert (all_looped.agreement, all_looped.cluster_sizes) == (0.0, [])
+    assert all_looped.outcomes == [v3.DEGENERATE] * 5
+    # Without sample_errors the old behaviour is unchanged.
+    assert v3.self_consistency(con, [None], greedy_hash=H6).outcomes == [v3.NO_SQL]

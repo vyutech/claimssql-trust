@@ -9,6 +9,7 @@ import pytest
 from claimssql.config import load_experiment
 from claimssql.generate import prompts
 from claimssql.generate.generator import (
+    DEGENERATE_OUTPUT,
     PARSE_ERROR,
     ParseFailure,
     clean_output,
@@ -16,6 +17,7 @@ from claimssql.generate.generator import (
     generate_one,
     parse_output,
 )
+from claimssql.llm.base import DegenerateOutput
 from claimssql.llm.cache import CachedClient, DiskCache
 from fakes import GOOD, REFUSAL, FakeClient
 
@@ -269,3 +271,38 @@ def test_smoke_script_reads_first_n_from_jsonl_and_handles_empty(tmp_path, monke
     records = [json.loads(line) for line in (tmp_path / "s.jsonl").read_text().splitlines()]
     assert [r["question_id"] for r in records] == ["Q-0", "Q-1"]
     assert {r["model_key"] for r in records} == {"groq"}
+
+
+
+# ------------------------------------------------ degenerate output (P6) ----
+
+
+class LoopsOnSeed3(FakeClient):
+    def chat(self, messages, temperature, seed, json_mode=True):
+        if seed == 3:
+            self.calls.append({"seed": seed})
+            raise DegenerateOutput("ollama HTTP 500: token repeat limit reached",
+                                   latency_ms=500.0)  # fmt: skip
+        return super().chat(messages, temperature, seed, json_mode)
+
+
+def test_looping_sample_becomes_degenerate_output_without_retry(tmp_path):
+    inner = LoopsOnSeed3()
+    client = CachedClient(inner, DiskCache(tmp_path), prompts.PROMPT_VERSION)
+    generations = generate_all("q", client, SCHEMA, CONFIG)
+
+    looped = generations[4]  # samples start at index 2; seed 3 is the third sample
+    assert (looped.seed, looped.error, looped.parsed, looped.raw) == (
+        3, DEGENERATE_OUTPUT, None, "",
+    )  # fmt: skip
+    assert len(looped.attempts) == 1  # no retry
+    assert looped.attempts[0].parse_problem.startswith("ollama HTTP 500")
+    assert looped.latency_ms == 500.0 and looped.prompt_tokens == 0
+    assert [g.error for g in generations].count(DEGENERATE_OUTPUT) == 1
+    assert len(inner.calls) == 7  # the question still completes: every call made once
+
+    # A rerun comes entirely from the cache, the loop included.
+    again = generate_all("q", client, SCHEMA, CONFIG)
+    assert len(inner.calls) == 7
+    assert again[4].error == DEGENERATE_OUTPUT and again[4].attempts[0].cached is True
+    json.dumps(again[4].to_dict())

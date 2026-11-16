@@ -44,7 +44,7 @@ from claimssql.config import (
     load_experiment,
     load_models,
 )
-from claimssql.generate.generator import Generation, generate_all
+from claimssql.generate.generator import DEGENERATE_OUTPUT, Generation, generate_all
 from claimssql.generate.prompts import PROMPT_VERSION
 from claimssql.llm.base import CacheMiss, LLMError, RateLimitStop
 from claimssql.llm.factory import make_client
@@ -121,7 +121,7 @@ def stage_generate(
         client = make_client(model, PROMPT_VERSION, cache_dir=cache_dir)
         total, calls, live_calls, live_seconds = len(questions), 0, 0, 0.0
         live_questions, live_wall = 0, 0.0
-        done, status = 0, "complete"
+        done, status, degenerate = 0, "complete", 0
         print(f"[{model.key}] generate: {total} question(s), {model.model}", flush=True)
         for index, question in enumerate(questions, start=1):
             started = time.perf_counter()
@@ -145,6 +145,7 @@ def stage_generate(
             done += 1
             wall = time.perf_counter() - started
             new_calls = [a for g in generations for a in g.attempts if not a.cached]
+            degenerate += sum(g.error == DEGENERATE_OUTPUT for g in generations)
             calls += sum(len(g.attempts) for g in generations)
             live_calls += len(new_calls)
             live_seconds += sum(a.latency_ms for a in new_calls) / 1000
@@ -168,6 +169,7 @@ def stage_generate(
             "new_calls": live_calls,
             "cache_hits": client.cache.hits,
             "seconds_per_new_call": round(live_seconds / live_calls, 2) if live_calls else None,
+            "degenerate_outputs": degenerate,  # generations where the model looped
         }
     if summary_path is not None:
         summary_path.parent.mkdir(parents=True, exist_ok=True)
@@ -220,6 +222,7 @@ def build_record(
         greedy_hash=v2["result_hash"] if v2 else None,
         timeout_s=timeout,
         max_rows=max_rows,
+        sample_errors=[sample.error for sample in samples],
     ).to_dict()
 
     return {

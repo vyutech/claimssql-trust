@@ -96,7 +96,9 @@ each configuration, without calling the model again:
 | C4 | C3, the greedy result is in the largest V3 group, and agreement ≥ τ |
 
 Otherwise it abstains with one reason code: `MODEL_REFUSED`, `SCHEMA_UNKNOWN`,
-`EXEC_ERROR`, `LOW_AGREEMENT` or `PARSE_ERROR`.
+`EXEC_ERROR`, `LOW_AGREEMENT`, `PARSE_ERROR` or `DEGENERATE_OUTPUT`
+(the model looped and the server aborted the reply; such replies are cached,
+since the same call loops again, and counted in `e3_generation_failures.csv`).
 
 ## Running the benchmark
 

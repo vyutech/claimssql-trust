@@ -16,7 +16,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from claimssql.llm.base import LLMClient, LLMResponse, Message
+from claimssql.llm.base import DegenerateOutput, LLMClient, LLMResponse, Message
 
 
 def cache_key(
@@ -97,29 +97,37 @@ class CachedClient:
             self.options, json_mode,
         )  # fmt: skip
         if (entry := self.cache.get(key)) is not None:
+            if "degenerate" in entry:  # a stored "model looped" result: give it back as such
+                raise DegenerateOutput(entry["degenerate"]["message"],
+                                       latency_ms=entry["degenerate"]["latency_ms"], cached=True)
             # latency_ms is the original call's latency, so timing statistics
             # stay meaningful on a cached re-run.
             return LLMResponse(**entry["response"], cached=True)
 
-        response = self.inner.chat(messages, temperature, seed, json_mode)  # errors are not cached
+        record = {
+            "key": key,
+            "created": datetime.now(UTC).isoformat(timespec="seconds"),
+            "request": {
+                "provider": self.provider,
+                "model": self.model,
+                "prompt_version": self.prompt_version,
+                "temperature": temperature,
+                "seed": seed,
+                "options": self.options,
+                "json_mode": json_mode,
+                "messages": messages,
+            },
+        }
+        try:
+            response = self.inner.chat(messages, temperature, seed, json_mode)
+        except DegenerateOutput as exc:
+            # Deterministic for this exact call, so it is stored: a rerun gets the
+            # same result at once instead of looping again. Every other error
+            # (network, timeout, rate limit) is NOT cached and is retried next run.
+            record["degenerate"] = {"message": exc.message, "latency_ms": exc.latency_ms}
+            self.cache.put(key, record)
+            raise
         stored = asdict(response)
         stored.pop("cached")
-        self.cache.put(
-            key,
-            {
-                "key": key,
-                "created": datetime.now(UTC).isoformat(timespec="seconds"),
-                "request": {
-                    "provider": self.provider,
-                    "model": self.model,
-                    "prompt_version": self.prompt_version,
-                    "temperature": temperature,
-                    "seed": seed,
-                    "options": self.options,
-                    "json_mode": json_mode,
-                    "messages": messages,
-                },
-                "response": stored,
-            },
-        )
+        self.cache.put(key, {**record, "response": stored})
         return response

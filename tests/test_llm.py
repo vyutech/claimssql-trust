@@ -8,7 +8,7 @@ import pytest
 
 from claimssql.config import EnvSettings, ModelConfig
 from claimssql.llm import groq_client as gq
-from claimssql.llm.base import LLMError, LLMResponse
+from claimssql.llm.base import DegenerateOutput, LLMError, LLMResponse, RateLimitStop
 from claimssql.llm.cache import CachedClient, DiskCache, cache_key
 from claimssql.llm.factory import make_client
 from claimssql.llm.groq_client import GroqClient, retry_delay
@@ -264,3 +264,75 @@ def test_make_client_always_wraps_in_the_cache(tmp_path):
     no_key = EnvSettings(groq_api_key=None, ollama_host="http://localhost:11434")
     with pytest.raises(LLMError):
         make_client(ModelConfig(key="b", provider="groq", model="m2"), "v1", tmp_path, no_key)
+
+
+
+# ---------------------------------------------- degenerate output (P6) ----
+
+LOOP_BODY = '{"error":"prediction aborted, token repeat limit reached"}'
+
+
+def test_ollama_token_repeat_limit_is_degenerate_output_not_a_plain_error():
+    client = OllamaClient("m", "http://h", http=mock_http(
+        lambda request: httpx.Response(500, text=LOOP_BODY)))  # fmt: skip
+    with pytest.raises(DegenerateOutput) as info:
+        client.chat(MESSAGES, temperature=0.7, seed=3)
+    assert "token repeat limit" in info.value.message
+    assert info.value.latency_ms >= 0 and info.value.cached is False
+
+    for status, body in [(500, '{"error":"model runner has unexpectedly stopped"}'),
+                         (503, LOOP_BODY), (400, LOOP_BODY)]:  # fmt: skip
+        other = OllamaClient("m", "http://h", http=mock_http(
+            lambda request, s=status, b=body: httpx.Response(s, text=b)))  # fmt: skip
+        with pytest.raises(LLMError) as plain:
+            other.chat(MESSAGES, temperature=0.7, seed=3)
+        assert not isinstance(plain.value, DegenerateOutput)
+
+
+class Looping(FakeClient):
+    def chat(self, messages, temperature, seed, json_mode=True):
+        self.calls.append(seed)
+        raise DegenerateOutput("ollama HTTP 500: token repeat limit reached", latency_ms=1234.0)
+
+
+def test_degenerate_output_is_cached_and_replayed(tmp_path):
+    inner = Looping()
+    client = CachedClient(inner, DiskCache(tmp_path), "v1")
+    with pytest.raises(DegenerateOutput) as first:
+        client.chat(MESSAGES, temperature=0.7, seed=3)
+    assert first.value.cached is False
+
+    with pytest.raises(DegenerateOutput) as second:
+        client.chat(MESSAGES, temperature=0.7, seed=3)
+    assert second.value.cached is True and second.value.latency_ms == 1234.0
+    assert "token repeat limit" in second.value.message
+    assert inner.calls == [3]  # the model was asked once, not again
+    (path,) = tmp_path.rglob("*.json")
+    entry = json.loads(path.read_text(encoding="utf-8"))
+    assert "response" not in entry and entry["degenerate"]["latency_ms"] == 1234.0
+
+    # A cache-only client (the verify stage) replays it too, without a model.
+    replay = CachedClient(FakeClient(["unused"]), DiskCache(tmp_path), "v1")
+    with pytest.raises(DegenerateOutput):
+        replay.chat(MESSAGES, temperature=0.7, seed=3)
+
+
+@pytest.mark.parametrize(
+    "error", [LLMError("ollama request failed: ReadTimeout"), RateLimitStop("wait 3600 s")]
+)
+def test_network_errors_and_rate_limits_are_still_not_cached(tmp_path, error):
+    class Failing(FakeClient):
+        def chat(self, *args, **kwargs):
+            raise error
+
+    with pytest.raises(type(error)):
+        CachedClient(Failing(), DiskCache(tmp_path), "v1").chat(MESSAGES, 0, 0)
+    assert list(tmp_path.rglob("*.json")) == []
+
+
+def test_cache_keys_of_normal_calls_did_not_change():
+    # Pinned before DEGENERATE_OUTPUT was added: the key of an ordinary call
+    # must stay the same, or every cache made so far would be lost.
+    key = cache_key("ollama", "qwen3.5:4b", "v1", MESSAGES, 0.7, 3,
+                    {"think": False, "num_ctx": 8192, "max_tokens": 600}, True)  # fmt: skip
+    assert key == "165f9e1acd02dfbfee23d292ef52dffda541041799d07ea915b6bf265d2a72e0"

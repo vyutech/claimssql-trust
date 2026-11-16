@@ -14,7 +14,7 @@ from claimssql.db import load_synpuf as ls
 from claimssql.eval import run_benchmark as rb
 from claimssql.eval.compare import result_hash
 from claimssql.eval.score import score_record
-from claimssql.llm.base import CacheMiss, LLMError, RateLimitStop
+from claimssql.llm.base import CacheMiss, DegenerateOutput, LLMError, RateLimitStop
 from claimssql.llm.cache import CachedClient, DiskCache
 from claimssql.llm.factory import CacheOnlyClient, make_client
 from claimssql.llm.groq_client import GroqClient
@@ -314,3 +314,35 @@ def test_generate_stage_runs_without_sqlglot_or_duckdb(tmp_path, questions_file,
     verify = subprocess.run([sys.executable, "-c", script, "--stage", "verify", *args],
                             capture_output=True, text=True, timeout=120)  # fmt: skip
     assert verify.returncode != 0 and "import of duckdb halted" in verify.stderr
+
+
+
+def test_a_looping_sample_does_not_fail_the_question(
+    tmp_path, db_path, questions_file, monkeypatch
+):
+    class LoopsOnSeed3(FakeClient):
+        def chat(self, messages, temperature, seed, json_mode=True):
+            if seed == 3 and "another" in messages[1]["content"]:  # M-1 only
+                self.calls.append({"seed": seed})
+                raise DegenerateOutput("ollama HTTP 500: token repeat limit reached")
+            return super().chat(messages, temperature, seed, json_mode)
+
+    def fake_make_client(model, prompt_version, cache_dir=None, env=None, cache_only=False):
+        if cache_only:
+            return make_client(model, prompt_version, cache_dir=cache_dir, cache_only=True)
+        inner = LoopsOnSeed3(reply)
+        inner.provider, inner.model, inner.options = model.provider, model.model, model.options
+        return CachedClient(inner, DiskCache(cache_dir), prompt_version)
+
+    monkeypatch.setattr(rb, "make_client", fake_make_client)
+    assert cli(tmp_path, db_path, questions_file, "--stage", "all", "--run-id", "loop") == 0
+    summary = json.loads((tmp_path / "runs" / "loop.generate.json").read_text())["qwen"]
+    assert (summary["status"], summary["questions_done"], summary["degenerate_outputs"]) == (
+        "complete", 3, 1,
+    )  # fmt: skip
+
+    records = rb.read_run(tmp_path / "runs" / "loop.jsonl")
+    m1 = next(r for r in records if r["question_id"] == "M-1")
+    assert m1["samples"][2]["error"] == "DEGENERATE_OUTPUT"
+    assert m1["v3"]["outcomes"][2] == "degenerate" and m1["v3"]["agreement"] == 0.8
+    assert score_record(m1, "C4", 0.6).region == "answerable_correct"  # 4 of 5 still agree
