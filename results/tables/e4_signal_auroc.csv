@@ -1,0 +1,19 @@
+split,model,signal,n_answered,n_wrong,auroc
+test,qwen,1 - agreement,90,57,0.8841
+test,qwen,100 - confidence,90,57,0.7927
+test,qwen,sql length,90,57,0.8402
+test,gemma,1 - agreement,91,61,0.8563
+test,gemma,100 - confidence,91,61,0.9
+test,gemma,sql length,91,61,0.7973
+test,mid_oss,1 - agreement,109,64,0.8885
+test,mid_oss,100 - confidence,109,64,0.8568
+test,mid_oss,sql length,109,64,0.7484
+all,qwen,1 - agreement,114,71,0.9065
+all,qwen,100 - confidence,114,71,0.8149
+all,qwen,sql length,114,71,0.8508
+all,gemma,1 - agreement,116,76,0.8605
+all,gemma,100 - confidence,116,76,0.9003
+all,gemma,sql length,116,76,0.7852
+all,mid_oss,1 - agreement,136,77,0.8701
+all,mid_oss,100 - confidence,136,77,0.8404
+all,mid_oss,sql length,136,77,0.7447

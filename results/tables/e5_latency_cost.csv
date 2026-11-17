@@ -1,0 +1,4 @@
+model_key,model,n_questions,calls_per_question,latency_p50_ms,latency_p95_ms,c1_latency_per_question_ms,c4_latency_per_question_ms,prompt_tokens_per_question,completion_tokens_per_question
+qwen,qwen3.5:4b,200,7.1,1879.4,8847.0,3056.7,16494.5,21367.8,867.6
+gemma,gemma4:e4b,200,7.0,1109.8,3468.7,1401.2,8771.8,21768.7,657.1
+mid_oss,gpt-oss:20b,200,7.0,2767.3,9789.8,3838.0,23303.3,20359.6,1317.1
