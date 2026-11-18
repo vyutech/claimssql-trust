@@ -1,4 +1,4 @@
 model_key,maker,ollama_tag,parameters,quantization,size_gb,settings,hardware,mean_seconds_per_call
-qwen,Alibaba,qwen3.5:4b,4.2B,Q4_K_M,3.3,think=false; num_ctx=8192; max_tokens=600,Kaggle GPU T4 x2 (placement not recorded),2.81
-gemma,Google,gemma4:e4b,7.5B,Q4_K_M,6.6,think=false; num_ctx=8192; max_tokens=600,Kaggle GPU T4 x2 (placement not recorded),1.46
-mid_oss,OpenAI,gpt-oss:20b,20.9B,MXFP4,13.8,think=low; num_ctx=8192; max_tokens=1500,Kaggle GPU T4 x2 (placement not recorded),3.95
+qwen,Alibaba,qwen3.5:4b,4.2B,Q4_K_M,3.3,think=false; num_ctx=8192; max_tokens=600,Kaggle 2x Tesla T4; 1 GPU used (GPU 0: 3985 MiB); 100% on GPU,2.81
+gemma,Google,gemma4:e4b,7.5B,Q4_K_M,6.6,think=false; num_ctx=8192; max_tokens=600,Kaggle 2x Tesla T4; 1 GPU used (GPU 0: 4995 MiB); 100% on GPU,1.46
+mid_oss,OpenAI,gpt-oss:20b,20.9B,MXFP4,13.8,think=low; num_ctx=8192; max_tokens=1500,"Kaggle 2x Tesla T4; split across both (GPU 0: 6609 MiB, GPU 1: 6699 MiB); 100% on GPU",3.95
