@@ -1,0 +1,4 @@
+model_key,ollama_tag,questions,calls_per_question,mean_seconds_per_call,p50_seconds_per_call,p95_seconds_per_call,seconds_per_question_c1_to_c3,seconds_per_question_c4,prompt_tokens_per_question,completion_tokens_per_question
+qwen,qwen3.5:4b,200,7.13,2.81,1.88,8.85,3.06,16.49,21368,868
+gemma,gemma4:e4b,200,7.03,1.46,1.11,3.47,1.4,8.77,21769,657
+mid_oss,gpt-oss:20b,200,7.01,3.95,2.77,9.79,3.84,23.3,20360,1317

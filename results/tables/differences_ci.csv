@@ -1,0 +1,9 @@
+comparison,metric,difference,lo,hi,resamples_used,interval_excludes_zero
+qwen C4 minus qwen C0,rs_10,445.0,379.38,508.75,2000,yes
+qwen C4 minus qwen C0,harmful,-71.0,-81.0,-61.0,2000,yes
+gemma C4 minus gemma C0,rs_10,309.38,245.0,368.14,2000,yes
+gemma C4 minus gemma C0,harmful,-49.0,-58.0,-39.0,2000,yes
+mid_oss C4 minus mid_oss C0,rs_10,480.0,418.12,542.5,2000,yes
+mid_oss C4 minus mid_oss C0,harmful,-75.0,-84.0,-66.0,2000,yes
+qwen C4 minus mid_oss C0,rs_10,468.12,399.38,533.75,2000,yes
+gemma C4 minus mid_oss C0,rs_10,353.75,275.61,431.25,2000,yes

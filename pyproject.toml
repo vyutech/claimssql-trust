@@ -31,6 +31,8 @@ dependencies = [
 dev = ["pytest", "ruff"]
 # Only scripts/make_catalogue.py needs this, to read the CMS codebook PDF.
 catalogue = ["pypdf"]
+# Only needed to run notebooks/analysis.ipynb from the command line.
+notebook = ["nbclient", "nbformat", "ipykernel"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

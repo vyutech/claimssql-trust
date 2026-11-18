@@ -29,3 +29,5 @@ benchmark:
 
 metrics:
   rs_penalties: [0, 1, 10]      # c values for the Reliability Score
+  bootstrap_resamples: 2000     # resamples of the test questions for confidence intervals
+  bootstrap_seed: 20261117      # fixed, so the intervals are the same on every run

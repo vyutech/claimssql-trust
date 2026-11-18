@@ -18,6 +18,11 @@ Reads results/runs/<run_id>.jsonl and writes to results/tables/:
 tau is chosen per model on the dev split only (highest RS_10); every other
 table reports the test split, with the all-questions numbers for reference.
 
+It also writes the tables of eval/report_stats.py: 95% confidence intervals
+(e2_rs_ci, e3_harmful_ci, e4_auroc_ci, differences_ci), data for the figures
+(e4_roc_points, e7_infeasible_by_group) and the report exports
+(table6_1_models, table7_1_latency_cost).
+
 Usage:
     python -m claimssql.eval.report --run-id full
 """
@@ -30,9 +35,10 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from claimssql.config import RESULTS_RUNS_DIR, RESULTS_TABLES_DIR
+from claimssql.config import RESULTS_RUNS_DIR, RESULTS_TABLES_DIR, load_experiment, load_models
 from claimssql.db.load_synpuf import write_csv
 from claimssql.eval import metrics
+from claimssql.eval.report_stats import build_stats_tables
 from claimssql.eval.run_benchmark import read_run
 from claimssql.eval.score import HARMFUL, REGIONS, score_records, verifier_outputs
 from claimssql.eval.taxonomy import LABELS, LowCardinality, label_case, normalise_low_cardinality
@@ -199,6 +205,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--low-cardinality", type=Path,
                         default=RESULTS_TABLES_DIR / "low_cardinality_values.json")
     parser.add_argument("--catalogue", type=Path, default=DEFAULT_CATALOGUE_PATH)
+    parser.add_argument("--resamples", type=int,
+                        help="bootstrap resamples (default: experiment.yaml)")
+    parser.add_argument("--seed", type=int, help="bootstrap seed (default: experiment.yaml)")
     args = parser.parse_args(argv)
 
     run_path = args.runs_dir / f"{args.run_id}.jsonl"
@@ -209,6 +218,12 @@ def main(argv: list[str] | None = None) -> int:
 
     low_cardinality = load_low_cardinality(args.low_cardinality, args.catalogue)
     tables, failures, taus = build_tables(records, low_cardinality)
+    settings = load_experiment().metrics
+    tables.update(build_stats_tables(
+        records, taus, load_models().models,
+        resamples=args.resamples or settings.bootstrap_resamples,
+        seed=settings.bootstrap_seed if args.seed is None else args.seed,
+    ))  # fmt: skip
     for name, (header, rows) in tables.items():
         write_csv(args.out_dir / name, header, rows)
     failures_path = args.out_dir / "failures.jsonl"

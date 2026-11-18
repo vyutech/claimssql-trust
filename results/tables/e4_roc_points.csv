@@ -1,0 +1,173 @@
+model,signal,false_positive_rate,true_positive_rate,threshold
+qwen,1 - agreement,0.0,0.0,
+qwen,1 - agreement,0.0,0.2982,1.0
+qwen,1 - agreement,0.0909,0.7193,0.8
+qwen,1 - agreement,0.1818,0.8772,0.6
+qwen,1 - agreement,0.4242,0.9123,0.4
+qwen,1 - agreement,0.8182,0.9649,0.2
+qwen,1 - agreement,1.0,1.0,0.0
+qwen,100 - confidence,0.0,0.0,
+qwen,100 - confidence,0.0,0.0175,50.0
+qwen,100 - confidence,0.0,0.0351,20.0
+qwen,100 - confidence,0.0,0.2807,15.0
+qwen,100 - confidence,0.0,0.2982,10.0
+qwen,100 - confidence,0.0909,0.6491,5.0
+qwen,100 - confidence,1.0,1.0,0.0
+qwen,sql length,0.0,0.0,
+qwen,sql length,0.0,0.0175,1453.0
+qwen,sql length,0.0,0.2281,496.0
+qwen,sql length,0.0303,0.2281,491.0
+qwen,sql length,0.0303,0.3158,378.0
+qwen,sql length,0.0606,0.3158,352.0
+qwen,sql length,0.0606,0.4035,291.0
+qwen,sql length,0.0909,0.4035,289.0
+qwen,sql length,0.0909,0.5614,235.0
+qwen,sql length,0.1212,0.5614,228.0
+qwen,sql length,0.1212,0.6491,180.0
+qwen,sql length,0.1212,0.6842,178.0
+qwen,sql length,0.1212,0.7719,146.0
+qwen,sql length,0.1818,0.7719,136.0
+qwen,sql length,0.2424,0.7719,133.0
+qwen,sql length,0.2424,0.8246,126.0
+qwen,sql length,0.2727,0.8246,125.0
+qwen,sql length,0.2727,0.8772,122.0
+qwen,sql length,0.303,0.8947,121.0
+qwen,sql length,0.3333,0.8947,117.0
+qwen,sql length,0.3333,0.9123,116.0
+qwen,sql length,0.4545,0.9123,104.0
+qwen,sql length,0.5152,0.9123,103.0
+qwen,sql length,0.6061,0.9123,93.0
+qwen,sql length,0.7273,0.9298,92.0
+qwen,sql length,0.7576,0.9298,90.0
+qwen,sql length,0.8182,0.9298,89.0
+qwen,sql length,0.8182,0.9649,87.0
+qwen,sql length,0.8788,0.9649,76.0
+qwen,sql length,0.9394,0.9825,73.0
+qwen,sql length,1.0,0.9825,65.0
+qwen,sql length,1.0,1.0,62.0
+gemma,1 - agreement,0.0,0.0,
+gemma,1 - agreement,0.0,0.2951,1.0
+gemma,1 - agreement,0.0,0.4098,0.8
+gemma,1 - agreement,0.0667,0.7049,0.4
+gemma,1 - agreement,0.1667,0.7869,0.2
+gemma,1 - agreement,1.0,1.0,0.0
+gemma,100 - confidence,0.0,0.0,
+gemma,100 - confidence,0.0,0.0328,30.0
+gemma,100 - confidence,0.0,0.3607,20.0
+gemma,100 - confidence,0.0,0.4754,15.0
+gemma,100 - confidence,0.0333,0.6885,10.0
+gemma,100 - confidence,0.4333,0.9508,5.0
+gemma,100 - confidence,1.0,1.0,0.0
+gemma,sql length,0.0,0.0,
+gemma,sql length,0.0,0.0164,615.0
+gemma,sql length,0.0,0.2131,265.0
+gemma,sql length,0.0333,0.2131,256.0
+gemma,sql length,0.0333,0.2951,212.0
+gemma,sql length,0.0667,0.2951,211.0
+gemma,sql length,0.0667,0.3443,191.0
+gemma,sql length,0.1,0.3443,186.0
+gemma,sql length,0.1,0.3934,178.0
+gemma,sql length,0.1,0.459,174.0
+gemma,sql length,0.1,0.4918,164.0
+gemma,sql length,0.1333,0.4918,163.0
+gemma,sql length,0.1333,0.5082,157.0
+gemma,sql length,0.1333,0.541,154.0
+gemma,sql length,0.1333,0.5902,142.0
+gemma,sql length,0.1667,0.5902,139.0
+gemma,sql length,0.1667,0.6066,136.0
+gemma,sql length,0.1667,0.6393,135.0
+gemma,sql length,0.1667,0.6885,131.0
+gemma,sql length,0.2,0.6885,128.0
+gemma,sql length,0.2,0.7213,120.0
+gemma,sql length,0.2333,0.7377,118.0
+gemma,sql length,0.2333,0.7705,111.0
+gemma,sql length,0.2667,0.7705,104.0
+gemma,sql length,0.2667,0.7869,103.0
+gemma,sql length,0.3333,0.7869,101.0
+gemma,sql length,0.3333,0.8197,100.0
+gemma,sql length,0.3667,0.8361,99.0
+gemma,sql length,0.4667,0.8361,93.0
+gemma,sql length,0.4667,0.8525,92.0
+gemma,sql length,0.5,0.8525,90.0
+gemma,sql length,0.5333,0.8689,89.0
+gemma,sql length,0.5667,0.8689,86.0
+gemma,sql length,0.5667,0.918,81.0
+gemma,sql length,0.7667,0.918,74.0
+gemma,sql length,0.7667,0.9508,68.0
+gemma,sql length,0.8,0.9508,63.0
+gemma,sql length,0.8667,0.9508,59.0
+gemma,sql length,0.8667,0.9672,54.0
+gemma,sql length,0.9,0.9672,53.0
+gemma,sql length,0.9333,0.9836,52.0
+gemma,sql length,0.9333,1.0,48.0
+gemma,sql length,1.0,1.0,46.0
+mid_oss,1 - agreement,0.0,0.0,
+mid_oss,1 - agreement,0.0,0.0625,1.0
+mid_oss,1 - agreement,0.0222,0.3594,0.8
+mid_oss,1 - agreement,0.0889,0.5938,0.6
+mid_oss,1 - agreement,0.1556,0.8125,0.4
+mid_oss,1 - agreement,0.2222,0.9219,0.2
+mid_oss,1 - agreement,1.0,1.0,0.0
+mid_oss,100 - confidence,0.0,0.0,
+mid_oss,100 - confidence,0.0,0.0312,20.0
+mid_oss,100 - confidence,0.0,0.0938,15.0
+mid_oss,100 - confidence,0.2222,0.8438,10.0
+mid_oss,100 - confidence,0.4667,0.9844,5.0
+mid_oss,100 - confidence,1.0,1.0,0.0
+mid_oss,sql length,0.0,0.0,
+mid_oss,sql length,0.0,0.0156,2195.0
+mid_oss,sql length,0.0,0.0469,1705.0
+mid_oss,sql length,0.0222,0.0469,1359.0
+mid_oss,sql length,0.0222,0.1094,960.0
+mid_oss,sql length,0.0444,0.1094,851.0
+mid_oss,sql length,0.0444,0.2656,589.0
+mid_oss,sql length,0.0667,0.2656,552.0
+mid_oss,sql length,0.0667,0.2812,542.0
+mid_oss,sql length,0.0889,0.2969,522.0
+mid_oss,sql length,0.0889,0.3438,433.0
+mid_oss,sql length,0.1111,0.3438,429.0
+mid_oss,sql length,0.1111,0.3906,373.0
+mid_oss,sql length,0.1556,0.3906,369.0
+mid_oss,sql length,0.1556,0.4219,365.0
+mid_oss,sql length,0.1556,0.4375,353.0
+mid_oss,sql length,0.1778,0.4375,347.0
+mid_oss,sql length,0.1778,0.4844,338.0
+mid_oss,sql length,0.2,0.4844,336.0
+mid_oss,sql length,0.2,0.5312,326.0
+mid_oss,sql length,0.2222,0.5312,320.0
+mid_oss,sql length,0.2222,0.5781,279.0
+mid_oss,sql length,0.2444,0.5781,265.0
+mid_oss,sql length,0.2444,0.6562,221.0
+mid_oss,sql length,0.2667,0.6562,199.0
+mid_oss,sql length,0.2667,0.7188,177.0
+mid_oss,sql length,0.2889,0.7188,173.0
+mid_oss,sql length,0.2889,0.7344,162.0
+mid_oss,sql length,0.3111,0.7344,161.0
+mid_oss,sql length,0.3111,0.7812,153.0
+mid_oss,sql length,0.3333,0.7812,147.0
+mid_oss,sql length,0.3333,0.8125,146.0
+mid_oss,sql length,0.3778,0.8125,141.0
+mid_oss,sql length,0.4,0.8125,140.0
+mid_oss,sql length,0.4,0.8281,138.0
+mid_oss,sql length,0.4222,0.8281,137.0
+mid_oss,sql length,0.4667,0.8281,128.0
+mid_oss,sql length,0.4889,0.8281,127.0
+mid_oss,sql length,0.4889,0.8438,124.0
+mid_oss,sql length,0.5111,0.8438,121.0
+mid_oss,sql length,0.5556,0.875,117.0
+mid_oss,sql length,0.5778,0.875,116.0
+mid_oss,sql length,0.5778,0.8906,112.0
+mid_oss,sql length,0.6222,0.8906,109.0
+mid_oss,sql length,0.6222,0.9062,108.0
+mid_oss,sql length,0.6444,0.9062,107.0
+mid_oss,sql length,0.6889,0.9062,106.0
+mid_oss,sql length,0.7333,0.9219,105.0
+mid_oss,sql length,0.7333,0.9375,104.0
+mid_oss,sql length,0.7778,0.9375,100.0
+mid_oss,sql length,0.8,0.9375,98.0
+mid_oss,sql length,0.8444,0.9375,97.0
+mid_oss,sql length,0.8889,0.9375,92.0
+mid_oss,sql length,0.8889,0.9688,87.0
+mid_oss,sql length,0.9556,0.9688,74.0
+mid_oss,sql length,1.0,0.9688,72.0
+mid_oss,sql length,1.0,1.0,61.0

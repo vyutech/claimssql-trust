@@ -128,6 +128,19 @@ other numbers are reported on the test split.
 Models marked `use: benchmark` in `configs/models.yaml` take part in the run;
 `use: demo` (Groq) is only for the demo and small tests.
 
+## Statistics and figures
+
+Confidence intervals come from a bootstrap over the test questions
+(`src/claimssql/eval/bootstrap.py`): 2,000 resamples with a fixed seed, drawn
+inside each question group so every resample keeps the benchmark's composition,
+and 95% percentile intervals. All models and configurations are scored on the
+same resampled questions, so differences such as "C4 minus C0" are paired. τ
+stays at each model's dev-chosen value.
+
+`notebooks/analysis.ipynb` reads only `results/tables/` and saves the figures to
+`results/figures/`. The drawing code is in `src/claimssql/eval/figures.py`; the
+figures use grey levels, hatching and markers, so they print in black and white.
+
 ## Command-line tools
 
 | Command | Phase | What it does |
@@ -143,7 +156,8 @@ Models marked `use: benchmark` in `configs/models.yaml` take part in the run;
 | `python scripts/smoke_generate.py` | P4 | Runs the first 10 questions of `questions.jsonl` on every model (7 calls per question per model), writes `results/runs/smoke.jsonl` and prints cache hits/misses, calls and average seconds per call. `--n`, `--models`, `--question "..."`. Resumable through the disk cache. |
 | `python -m claimssql.verify.schema_check` | P5 | Runs the schema check (V1) on every gold query in `questions.jsonl`. All must pass; a failure would be a false positive in V1. Exit code 1 if any fails. |
 | `python -m claimssql.eval.run_benchmark --stage generate\|verify\|all` | P6 | Runs the benchmark. `generate` makes the LLM calls (no database needed, resumable through the cache); `verify` re-reads them from the cache, runs V1–V3 and appends to `results/runs/<run-id>.jsonl`. Options: `--run-id`, `--models`, `--groups`, `--split`, `--ids`, `--limit`. Exit code 2 = stopped by a rate limit; run again to continue. |
-| `python -m claimssql.eval.report --run-id X` | P6 | Scores a run offline and writes the report tables (`e1`–`e5`, `outcomes_confusion.csv`, `tau_selection.csv`, `failures.jsonl`) to `results/tables/`. |
+| `python -m claimssql.eval.report --run-id X` | P6/P7 | Scores a run offline and writes the report tables to `results/tables/`: `e1`–`e5`, `outcomes_confusion.csv`, `tau_selection.csv`, `failures.jsonl`, the 95% confidence-interval tables (`e2_rs_ci`, `e3_harmful_ci`, `e4_auroc_ci`, `differences_ci`), figure data and `table6_1_models.csv` / `table7_1_latency_cost.csv`. `--resamples` and `--seed` override the bootstrap settings in `configs/experiment.yaml`. |
+| `python -m jupyter execute notebooks/analysis.ipynb --inplace` | P7 | Draws the report's figures from `results/tables/` and saves 300-dpi PNGs to `results/figures/` (needs `pip install -e ".[notebook]"`). |
 | `python scripts/make_kaggle_bundle.py` | P6 | Zips what generation needs (`src/`, `configs/`, the catalogue, `questions.jsonl`, `pyproject.toml`) into `dist/claimssql_bundle.zip`, with the git commit and a cache-key fingerprint inside. Warns about uncommitted changes. |
 | `python scripts/merge_cache.py cache_qwen.zip ...` | P6 | Copies the LLM cache downloaded from Kaggle into `results/cache/`, skipping files already present. Warns if a zip was made from a different commit. |
 | `python scripts/build_demo_db.py` | P7 | Builds `data/demo.duckdb` (5,000 fixed random beneficiaries with all their claims) and `app_data/explorer.jsonl` (what the benchmark explorer shows) from `results/runs/full.jsonl`. |
@@ -178,7 +192,7 @@ src/claimssql/
 app/                streamlit_app.py (demo app)
 app_data/           explorer.jsonl for the app (generated, git-ignored)
 deploy/             Space requirements, README header and Dockerfile
-notebooks/          kaggle_generate.ipynb (generation on Kaggle), analysis
+notebooks/          kaggle_generate.ipynb (generation on Kaggle), analysis.ipynb (figures)
 results/            runs/, tables/, figures/ (cache/ is git-ignored)
 tests/
 ```

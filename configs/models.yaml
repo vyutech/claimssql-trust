@@ -13,22 +13,32 @@
 #   num_ctx           (ollama) context window in tokens; the schema prompt is ~2,800
 #   reasoning_effort  (groq)   how much hidden reasoning the model may do
 #   max_tokens        cap on generated tokens per call (includes reasoning tokens)
+#
+# info is only for the report's model table (table6_1_models.csv). It is not
+# sent to the model and is not part of the cache key. parameters, quantization
+# and size_gb are from the Ollama registry entry of each tag.
 models:
   - key: qwen
     provider: ollama
     model: "qwen3.5:4b"
     use: benchmark
     options: {think: false, num_ctx: 8192, max_tokens: 600}
+    info: {maker: Alibaba, parameters: 4.2B, quantization: Q4_K_M, size_gb: 3.3,
+           hardware: "Kaggle GPU T4 x2 (placement not recorded)"}
   - key: gemma
     provider: ollama
     model: "gemma4:e4b"
     use: benchmark
     options: {think: false, num_ctx: 8192, max_tokens: 600}
+    info: {maker: Google, parameters: 7.5B, quantization: Q4_K_M, size_gb: 6.6,
+           hardware: "Kaggle GPU T4 x2 (placement not recorded)"}
   - key: mid_oss            # mid-size model; too large for the laptop, runs on Kaggle
     provider: ollama
     model: "gpt-oss:20b"
     use: benchmark
     options: {think: low, num_ctx: 8192, max_tokens: 1500}
+    info: {maker: OpenAI, parameters: 20.9B, quantization: MXFP4, size_gb: 13.8,
+           hardware: "Kaggle GPU T4 x2 (placement not recorded)"}
   - key: groq
     provider: groq
     model: "openai/gpt-oss-20b"

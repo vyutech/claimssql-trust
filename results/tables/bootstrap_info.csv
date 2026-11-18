@@ -1,0 +1,2 @@
+split,questions,resamples,seed,level,method
+test,160,2000,20261117,0.95,"paired, stratified by group, percentile interval, tau fixed"

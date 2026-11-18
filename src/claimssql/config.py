@@ -33,6 +33,9 @@ class ModelConfig(BaseModel):
     use: Literal["benchmark", "demo"] = "benchmark"
     # Per-model call settings (think, num_ctx, reasoning_effort, max_tokens).
     options: dict[str, bool | int | float | str] = Field(default_factory=dict)
+    # Facts about the model for the report's model table (maker, size, hardware).
+    # Not sent to the model and not part of the cache key.
+    info: dict[str, bool | int | float | str] = Field(default_factory=dict)
 
 
 class ModelsConfig(BaseModel):
@@ -86,6 +89,8 @@ class BenchmarkConfig(BaseModel):
 
 class MetricsConfig(BaseModel):
     rs_penalties: list[float] = Field(min_length=1)
+    bootstrap_resamples: int = Field(default=2000, ge=1)
+    bootstrap_seed: int = 20261117
 
 
 class ExperimentConfig(BaseModel):

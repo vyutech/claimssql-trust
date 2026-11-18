@@ -315,10 +315,13 @@ def read(path) -> list[dict]:
 
 def test_report_writes_every_table(report_dir):
     assert sorted(p.name for p in report_dir.iterdir()) == [
-        "abstain_reasons.csv", "e1_ex_by_model_difficulty.csv", "e2_rs_by_config_penalty.csv",
-        "e3_generation_failures.csv", "e3_taxonomy.csv", "e4_risk_coverage.csv",
-        "e4_signal_auroc.csv", "e5_latency_cost.csv", "failures.jsonl",
-        "outcomes_confusion.csv", "tau_selection.csv",
+        "abstain_reasons.csv", "bootstrap_info.csv", "differences_ci.csv",
+        "e1_ex_by_model_difficulty.csv", "e2_rs_by_config_penalty.csv", "e2_rs_ci.csv",
+        "e3_generation_failures.csv", "e3_harmful_ci.csv", "e3_taxonomy.csv",
+        "e4_auroc_ci.csv", "e4_risk_coverage.csv", "e4_roc_points.csv", "e4_signal_auroc.csv",
+        "e5_latency_cost.csv", "e7_infeasible_by_group.csv", "failures.jsonl",
+        "outcomes_confusion.csv", "table6_1_models.csv", "table7_1_latency_cost.csv",
+        "tau_selection.csv",
     ]  # fmt: skip
 
 
