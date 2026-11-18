@@ -46,15 +46,22 @@ def _with_bounds(names: tuple[str, ...]) -> list[str]:
 
 
 def cross_model_pairs(models: list[str], configs: list[ModelConfig]) -> list[tuple]:
-    """Each smaller model's C4 against the largest model's C0 (RQ4: can a small
-    verified model match a bigger unverified one?). "Largest" = biggest size_gb
-    in models.yaml; no pairs if sizes are not recorded."""
+    """RS_10 comparisons across models (RQ4). "Largest" = biggest size_gb in
+    models.yaml; no pairs if sizes are not recorded.
+
+      each smaller model's C4 against the largest model's C0
+          (can a small verified model match a bigger unverified one?)
+      the largest model's C4 against each smaller model's C4
+          (with full verification on both, how much does size still add?)
+    """
     size = {c.key: c.info.get("size_gb") for c in configs if c.key in models}
     known = {k: v for k, v in size.items() if isinstance(v, (int, float))}
     if len(known) < 2:
         return []
     largest = max(known, key=known.get)
-    return [((model, "C4"), (largest, "C0")) for model in models if model != largest]
+    smaller = [model for model in models if model != largest]
+    return ([((model, "C4"), (largest, "C0")) for model in smaller]
+            + [((largest, "C4"), (model, "C4")) for model in smaller])  # fmt: skip
 
 
 def ci_tables(
@@ -80,7 +87,8 @@ def ci_tables(
     differences = []
     for label_a, label_b, name, est in result["differences"]:
         excludes = est.excludes_zero()
-        differences.append((f"{label_a} minus {label_b}", name, *_triple(est, 2), est.used,
+        digits = 4 if name == "auroc" else 2
+        differences.append((f"{label_a} minus {label_b}", name, *_triple(est, digits), est.used,
                             "" if excludes is None else ("yes" if excludes else "no")))  # fmt: skip
 
     signals = {(m, s): row for m in {r["model_key"] for r in test_records}

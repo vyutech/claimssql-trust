@@ -35,6 +35,7 @@ PENALTIES = (0, 1, 10)
 METRICS = ("ex", "coverage", "risk", "rs_0", "rs_1", "rs_10",
            "harmful", "answerable_wrong", "infeasible_answered")  # fmt: skip
 SIGNALS = ("1 - agreement", "100 - confidence", "sql length")
+AUROC_COMPARISON = ("1 - agreement", "100 - confidence")  # reported as first minus second
 
 
 @dataclass(frozen=True)
@@ -191,6 +192,7 @@ def bootstrap_report(
              "differences": [(label_a, label_b, metric, Estimate)],
              "auroc": {(model, signal): Estimate}, "n": ..., "resamples": ...}.
     `cross_model`: extra RS_10 differences, e.g. (("qwen", "C4"), ("mid_oss", "C0")).
+    For every model it also adds AUROC(1 - agreement) minus AUROC(100 - confidence).
     """
     ids, groups = question_order(records)
     cases = case_arrays(records, taus, ids)
@@ -223,13 +225,20 @@ def bootstrap_report(
     auroc = {}
     for model, arrays in signal_arrays(records, ids).items():
         answered, wrong = arrays["answered"], arrays["wrong"]
+        points, values = {}, {}
         for name in SIGNALS:
-            point = fast_auroc(wrong[answered], arrays[name][answered])
-            values = np.empty(resamples)
+            points[name] = fast_auroc(wrong[answered], arrays[name][answered])
+            values[name] = np.empty(resamples)
             for row in range(resamples):
                 picked = index[row][answered[index[row]]]
-                values[row] = fast_auroc(wrong[picked], arrays[name][picked])
-            auroc[(model, name)] = estimate(point, values)
+                values[name][row] = fast_auroc(wrong[picked], arrays[name][picked])
+            auroc[(model, name)] = estimate(points[name], values[name])
+        # Does self-consistency beat the model's own confidence? Paired: both
+        # AUROCs come from the same resampled questions.
+        first, second = AUROC_COMPARISON
+        differences.append((f"{model} AUROC({first})", f"{model} AUROC({second})", "auroc",
+                            estimate(points[first] - points[second],
+                                     values[first] - values[second])))  # fmt: skip
 
     return {"metrics": metrics, "differences": differences, "auroc": auroc,
             "n": len(ids), "resamples": resamples}  # fmt: skip

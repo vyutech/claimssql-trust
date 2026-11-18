@@ -7,3 +7,8 @@ mid_oss C4 minus mid_oss C0,rs_10,480.0,418.12,542.5,2000,yes
 mid_oss C4 minus mid_oss C0,harmful,-75.0,-84.0,-66.0,2000,yes
 qwen C4 minus mid_oss C0,rs_10,468.12,399.38,533.75,2000,yes
 gemma C4 minus mid_oss C0,rs_10,353.75,275.61,431.25,2000,yes
+mid_oss C4 minus qwen C4,rs_10,11.88,-24.38,49.38,2000,no
+mid_oss C4 minus gemma C4,rs_10,126.25,71.88,179.38,2000,yes
+qwen AUROC(1 - agreement) minus qwen AUROC(100 - confidence),auroc,0.0914,0.0161,0.168,2000,yes
+gemma AUROC(1 - agreement) minus gemma AUROC(100 - confidence),auroc,-0.0437,-0.1145,0.0222,2000,no
+mid_oss AUROC(1 - agreement) minus mid_oss AUROC(100 - confidence),auroc,0.0318,-0.0295,0.0992,2000,no

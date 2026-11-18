@@ -182,7 +182,11 @@ def test_differences_auroc_and_info_tables(tables):
     rs = differences[("m C4 minus m C0", "rs_10")]
     assert (rs["difference"], rs["resamples_used"]) == ("400.0", "200")
     assert differences[("m C4 minus m C0", "harmful")]["difference"] == "-4.0"
-    assert len(differences) == 2  # one model: no cross-model comparison
+    # AUROC(1 - agreement) 0.7 minus AUROC(100 - confidence) 0.45, by hand in test_eval.
+    signal = differences[("m AUROC(1 - agreement) minus m AUROC(100 - confidence)", "auroc")]
+    assert signal["difference"] == "0.25"
+    assert float(signal["lo"]) <= 0.25 <= float(signal["hi"])
+    assert len(differences) == 3  # one model: no cross-model comparison
 
     auroc = {r["signal"]: r for r in read(tables / "e4_auroc_ci.csv")}
     agreement = auroc["1 - agreement"]
@@ -231,6 +235,7 @@ def test_real_models_have_report_info():
     # RQ4 pairs: each smaller model's C4 against the largest model's C0.
     assert cross_model_pairs(["qwen", "gemma", "mid_oss"], configs) == [
         (("qwen", "C4"), ("mid_oss", "C0")), (("gemma", "C4"), ("mid_oss", "C0")),
+        (("mid_oss", "C4"), ("qwen", "C4")), (("mid_oss", "C4"), ("gemma", "C4")),
     ]  # fmt: skip
     assert cross_model_pairs(["qwen"], configs) == []
 
@@ -252,6 +257,23 @@ def test_every_figure_renders_at_300_dpi(name, tables, tmp_path):
         assert image.width > 900
     assert all(not ax.get_title() for ax in fig.axes)  # no titles inside the images
     assert all(ax.get_ylabel() or ax.get_xlabel() for ax in fig.axes)
+
+
+def test_rs_figure_uses_a_numeric_penalty_axis(tables):
+    import matplotlib.pyplot as plt
+
+    fig = figures.fig7_3_rs_vs_penalty(tables)
+    ax = fig.axes[0]
+    assert list(ax.get_xticks()) == [0, 1, 5, 10]
+    lines = [line for line in ax.get_lines() if list(line.get_xdata()) == [0, 10]]
+    markers = [line for line in ax.get_lines() if list(line.get_xdata()) == [0, 1, 10]]
+    assert len(lines) == len(markers) == 5  # one line and one set of markers per config
+    # C0 at test: RS_0 = 40, RS_1 = -20, RS_10 = -560. The line runs from RS_0 to RS_10
+    # and RS_1 lies on it, because RS_c is linear in c.
+    assert list(lines[0].get_ydata()) == [40.0, -560.0]
+    assert list(markers[0].get_ydata()) == [40.0, -20.0, -560.0]
+    assert 40.0 + (-560.0 - 40.0) / 10 * 1 == -20.0
+    plt.close(fig)
 
 
 def test_figure_names_and_model_order(tables):

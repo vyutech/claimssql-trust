@@ -141,7 +141,12 @@ def fig7_2_harmful_by_config(tables: Path) -> Figure:
 
 
 def fig7_3_rs_vs_penalty(tables: Path, split: str = "test") -> Figure:
-    """Reliability Score at penalty c = 0, 1, 10; one line per config, one panel per model."""
+    """Reliability Score against the penalty c; one line per config, one panel per model.
+
+    RS_c = RS_0 - c x (harmful answers as % of questions), so it is a straight line
+    in c. It is drawn as the line through RS_0 and RS_10 on a true numeric axis,
+    with markers at the three penalties the report uses (c = 0, 1, 10).
+    """
     data = read(tables, "e2_rs_by_config_penalty.csv")
     data = data[data["split"] == split]
     models, labels = model_order(tables), model_labels(tables)
@@ -150,12 +155,19 @@ def fig7_3_rs_vs_penalty(tables: Path, split: str = "test") -> Figure:
     for ax, model in zip(axes, models, strict=True):
         rows = data[data["model"] == model].set_index("config")
         for c, config in enumerate(CONFIGS):
-            ax.plot(range(3), [rows.loc[config, f"rs_{p}"] for p in penalties], color="black",
-                    marker=MARKERS[c], linestyle=LINES[c], markersize=5, linewidth=1.1,
-                    markerfacecolor="white" if c % 2 else "black", label=config)
+            start, end = rows.loc[config, "rs_0"], rows.loc[config, "rs_10"]
+            style = {"color": "black", "linewidth": 1.1}
+            ax.plot([0, 10], [start, end], linestyle=LINES[c], **style)
+            ax.plot(penalties, [rows.loc[config, f"rs_{p}"] for p in penalties],
+                    linestyle="none", marker=MARKERS[c], markersize=5,
+                    markerfacecolor="white" if c % 2 else "black", markeredgecolor="black")
+            # Legend entry with both the line style and the marker of this config.
+            ax.plot([], [], linestyle=LINES[c], marker=MARKERS[c], markersize=5,
+                    markerfacecolor="white" if c % 2 else "black", label=config, **style)
         ax.axhline(0, color="0.5", linewidth=0.6)
-        ax.set_xticks(range(3), [str(p) for p in penalties])
-        ax.set_xlabel(f"Penalty c\n{labels.get(model, model)}")
+        ax.set_xlim(-0.4, 10.4)
+        ax.set_xticks([0, 1, 5, 10])
+        ax.set_xlabel(f"Penalty c for a harmful answer\n{labels.get(model, model)}")
     axes[0].set_ylabel("Reliability Score RS$_c$")
     axes[-1].legend(title="Configuration", loc="lower left")
     return fig
