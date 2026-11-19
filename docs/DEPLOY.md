@@ -34,13 +34,12 @@ Use `--sdk docker` in the second command if step 0 said so. This writes
 full database and no LLM cache.
 
 Rebuild both after a new benchmark run, so the app shows the new results.
-`build_demo_db.py` also copies the headline numbers (from `results/tables/`) and
-the headline figure (from `results/figures/`), so run the report and the analysis
-notebook first.
+`build_demo_db.py` also copies the numbers and chart data (from `results/tables/`),
+so run the report first.
 
-Before the first deployment, replace the two placeholder links in the app's
-sidebar (`GITHUB_URL` and `REPORT_URL` at the top of `app/ui_common.py`) with
-your real repository and report, then build the bundle.
+The app has no sidebar until a code link is set. To show a "Code on GitHub"
+button, set `GITHUB_URL` at the top of `app/ui_common.py` to the public
+repository, then build the bundle. Leave it empty to keep the sidebar hidden.
 
 ## 2. Create the Space
 
@@ -87,8 +86,10 @@ huggingface-cli upload <your-name>/claimssql-trust dist/space . --repo-type spac
 
 1. The Space shows **Building**, then **Running** (a few minutes the first time).
    If it shows **Runtime error**, open **Logs** and send me the last lines.
-2. **Benchmark explorer**: pick a model and a question. It needs no API key.
-3. **Ask your own question**: try "How many members had diabetes in 2009?".
+2. **Home**, **How it works**, **Results** and **About** need no API key; check
+   that the two charts on Results show.
+3. **Explorer**: pick a model and a question. It needs no API key.
+4. **Try it**: try "How many members had diabetes in 2009?".
    It takes 1-2 minutes on Groq's free tier (8,000 tokens per minute) and
    should end with **Answered** and a number. About 15 questions per day fit in
    the free daily limit; after that the app says so instead of failing.

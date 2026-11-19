@@ -1,71 +1,45 @@
-# Theme for the ClaimsSQL-Trust demo app.
-# Adapted from Streamlit's "shadcn-dual" template: slate surfaces with a calm teal
-# accent. Both [theme.light] and [theme.dark] are set, so viewers keep the
-# light/dark switch in the app's settings menu.
+# Theme for the ClaimsSQL-Trust demo app: dark only (no light/dark switch).
+#
+# Colour has one meaning everywhere in the app:
+#   green  = answered correctly
+#   amber  = refused safely (the "orange" colour token is set to amber)
+#   red    = wrong answer
+# Only [theme] is set, which locks the appearance to this dark theme.
 
 [theme]
+base = "dark"
+primaryColor = "#22C55E"
+backgroundColor = "#0A0D0C"
+secondaryBackgroundColor = "#141917"
+codeBackgroundColor = "#111614"
+textColor = "#E7ECEA"
+linkColor = "#4ADE80"
+borderColor = "#232B28"
+codeTextColor = "#D7E0DC"
+grayColor = "#8A9590"
+greenColor = "#22C55E"
+orangeColor = "#F59E0B"
+yellowColor = "#FBBF24"
+redColor = "#EF4444"
+blueColor = "#60A5FA"
+violetColor = "#A78BFA"
+chartCategoricalColors = ["#22C55E", "#F59E0B", "#EF4444", "#60A5FA", "#A78BFA", "#8A9590"]
+dataframeBorderColor = "#232B28"
+dataframeHeaderBackgroundColor = "#141917"
+dataframeHeaderTextColor = "#E7ECEA"
+
 showWidgetBorder = true
-showSidebarBorder = true
-baseRadius = "8px"
-buttonRadius = "8px"
-font = "'Inter':https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+showSidebarBorder = false
+baseRadius = "12px"
+buttonRadius = "10px"
+font = "'Inter':https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
 codeFont = "'JetBrains Mono':https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap"
 codeFontSize = "0.85rem"
-baseFontSize = 15
-headingFontWeights = [650, 600, 600, 600, 600, 600]
+baseFontSize = 16
+headingFontSizes = ["44px", "30px", "22px", "18px", "16px", "14px"]
+headingFontWeights = [800, 700, 650, 600, 600, 600]
+metricValueFontSize = "40px"
+metricValueFontWeight = 700
 linkUnderline = false
-
-[theme.light]
-primaryColor = "#0F766E"
-backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F6F8FA"
-codeBackgroundColor = "#F1F5F9"
-textColor = "#0F172A"
-linkColor = "#0F766E"
-borderColor = "#E2E8F0"
-codeTextColor = "#0F172A"
-grayColor = "#64748B"
-blueColor = "#2563EB"
-greenColor = "#15803D"
-redColor = "#B91C1C"
-yellowColor = "#A16207"
-orangeColor = "#C2410C"
-violetColor = "#6D28D9"
-dataframeBorderColor = "#E2E8F0"
-dataframeHeaderBackgroundColor = "#F6F8FA"
-
-[theme.dark]
-primaryColor = "#2DD4BF"
-backgroundColor = "#0B1220"
-secondaryBackgroundColor = "#131C2E"
-codeBackgroundColor = "#1B2638"
-textColor = "#E2E8F0"
-linkColor = "#5EEAD4"
-borderColor = "#24324A"
-codeTextColor = "#E2E8F0"
-grayColor = "#94A3B8"
-blueColor = "#60A5FA"
-greenColor = "#4ADE80"
-redColor = "#F87171"
-yellowColor = "#FACC15"
-orangeColor = "#FB923C"
-violetColor = "#A78BFA"
-dataframeBorderColor = "#24324A"
-dataframeHeaderBackgroundColor = "#131C2E"
-dataframeHeaderTextColor = "#E2E8F0"
-
-[theme.light.sidebar]
-backgroundColor = "#F6F8FA"
-secondaryBackgroundColor = "#EEF2F6"
-textColor = "#0F172A"
-borderColor = "#E2E8F0"
-primaryColor = "#0F766E"
-linkColor = "#0F766E"
-
-[theme.dark.sidebar]
-backgroundColor = "#080E1A"
-secondaryBackgroundColor = "#131C2E"
-textColor = "#E2E8F0"
-borderColor = "#24324A"
-primaryColor = "#2DD4BF"
-linkColor = "#5EEAD4"
+paddingTop = "2.5rem"
+paddingBottom = "4rem"

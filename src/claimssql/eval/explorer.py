@@ -263,6 +263,81 @@ def results_summary(tables: Path) -> dict[str, Any]:
     return summary
 
 
+def results_detail(tables: Path) -> dict[str, Any]:
+    """Everything the Results and How-it-works pages chart, from the report tables
+    (test split): harmful answers per config with intervals, infeasible questions
+    answered by trap group, signal AUROCs and the paired differences."""
+    harmful = [
+        {"model": r["model"], "config": r["config"], "harmful": float(r["harmful"]),
+         "lo": float(r["harmful_lo"]), "hi": float(r["harmful_hi"])}
+        for r in _read_csv(tables / "e3_harmful_ci.csv")
+    ]  # fmt: skip
+    infeasible = [
+        {"model": r["model"], "group": r["group"], "n": int(r["n"]),
+         "answered_c0": int(r["answered_C0"]), "answered_c4": int(r["answered_C4"])}
+        for r in _read_csv(tables / "e7_infeasible_by_group.csv") if r["split"] == "test"
+    ]  # fmt: skip
+    auroc = [
+        {"model": r["model"], "signal": r["signal"], "auroc": float(r["auroc"]),
+         "lo": float(r["auroc_lo"]), "hi": float(r["auroc_hi"])}
+        for r in _read_csv(tables / "e4_auroc_ci.csv")
+    ]  # fmt: skip
+    differences = [
+        {"comparison": r["comparison"], "metric": r["metric"],
+         "difference": float(r["difference"]), "lo": float(r["lo"]), "hi": float(r["hi"]),
+         "excludes_zero": r["interval_excludes_zero"] == "yes"}
+        for r in _read_csv(tables / "differences_ci.csv")
+    ]  # fmt: skip
+    return {"harmful": harmful, "infeasible": infeasible, "auroc": auroc,
+            "differences": differences}  # fmt: skip
+
+
+def _example(row: dict[str, Any], config: str) -> dict[str, Any]:
+    item = row["configs"][config]
+    return {
+        "model": row["model"], "model_key": row["model_key"], "question_id": row["question_id"],
+        "question": row["question"], "group": row["group"], "sql": item["model_sql"],
+        "reason_code": item["reason_code"], "verification": item["verification"],
+        "result": item["result"], "tau": row["tau"],
+    }  # fmt: skip
+
+
+def check_examples(
+    rows: list[dict[str, Any]], walkthrough: tuple[str, str] = ("qwen", "H-022")
+) -> dict[str, Any]:
+    """Real cases from the run for the How-it-works page.
+
+    v1 / v2: the shortest C4 SQL that the schema check / the dry run stopped
+    (ties broken by model and question id, so the choice is stable).
+    walkthrough: one question followed through C0 and C4, with the gold result
+    and the owner's note on why the obvious SQL is wrong.
+    """
+
+    def stopped_by(reason: str) -> dict[str, Any] | None:
+        cases = [r for r in rows if r["configs"]["C4"]["reason_code"] == reason
+                 and r["configs"]["C4"]["model_sql"]]  # fmt: skip
+        if not cases:
+            return None
+        best = min(cases, key=lambda r: (len(r["configs"]["C4"]["model_sql"]),
+                                         r["model_key"], r["question_id"]))  # fmt: skip
+        return _example(best, "C4")
+
+    out: dict[str, Any] = {"v1": stopped_by("SCHEMA_UNKNOWN"), "v2": stopped_by("EXEC_ERROR")}
+    model, question_id = walkthrough
+    match = [r for r in rows if (r["model_key"], r["question_id"]) == (model, question_id)]
+    if match:
+        row = match[0]
+        out["walkthrough"] = {
+            **_example(row, "C4"),
+            "c0": {"answered": row["configs"]["C0"]["answered"],
+                   "correct": row["configs"]["C0"]["correct"],
+                   "result": row["configs"]["C0"]["result"]},
+            "gold_result": row["gold"], "owner_note": row.get("notes", ""),
+            "trap_tags": row.get("trap_tags", []),
+        }  # fmt: skip
+    return out
+
+
 # One-click questions for the Ask page, taken from the owner's benchmark - dev
 # split only, so no test question is exposed. First by id within each group.
 SAMPLE_GROUPS = {

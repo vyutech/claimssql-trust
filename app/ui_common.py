@@ -1,13 +1,13 @@
-"""Shared pieces of the demo app's pages: data loading and small display helpers.
+"""Shared pieces of the demo app's pages: data loading, colours and small widgets.
 
-The app's logic (what counts as an interesting case, which checks passed) lives
-in claimssql.eval.explorer; this module only turns it into Streamlit elements.
+Colour has one meaning everywhere: green = answered correctly, amber = refused
+safely, red = wrong answer. The app's logic (which checks passed, which cases are
+interesting) lives in claimssql.eval.explorer; this module only displays it.
 """
 
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import Any
 
 import pandas as pd
@@ -18,15 +18,16 @@ from claimssql.config import REPO_ROOT
 from claimssql.eval.explorer import read_explorer, verification_steps
 
 APP_DATA = REPO_ROOT / "app_data"
-GITHUB_URL = "https://github.com/your-name/claimssql-trust"  # placeholder: set before deploying
-REPORT_URL = "https://example.org/claimssql-trust-report.pdf"  # placeholder: set before deploying
+# Set to the public repository to show a GitHub button; empty hides it (and the sidebar).
+GITHUB_URL = ""
 
+GREEN, AMBER, RED = "#22C55E", "#F59E0B", "#EF4444"
 GROUP_NAMES = {
     "easy": "Easy", "medium": "Medium", "hard": "Hard",
     "T1": "T1 · missing concept", "T2": "T2 · not in data", "T3": "T3 · ambiguous",
     "T4": "T4 · not a SQL question",
 }  # fmt: skip
-# Badge per step status: (colour, icon). "unused" = shown for comparison, not applied.
+# Badge per check status: (colour, icon). "unused" = shown for comparison, not applied.
 STEP_STYLE = {
     "pass": ("green", ":material/check_circle:"),
     "fail": ("red", ":material/cancel:"),
@@ -34,6 +35,45 @@ STEP_STYLE = {
     "unused-pass": ("gray", ":material/check:"),
     "unused-fail": ("gray", ":material/close:"),
 }
+
+# Small, scoped styling (the owner asked for it): the Home header and the tiles.
+# Only .st-key-<key> classes of containers created with that key are targeted.
+CSS = """
+<style>
+.st-key-hero {
+  background: radial-gradient(120% 140% at 0% 0%, rgba(34,197,94,0.22) 0%,
+              rgba(34,197,94,0.06) 45%, rgba(10,13,12,0) 75%);
+  border: 1px solid rgba(34,197,94,0.25);
+  border-radius: 20px;
+  padding: 2.6rem 2.4rem 2.2rem 2.4rem;
+}
+[class*="st-key-tile"] {
+  background: linear-gradient(180deg, #161D1A 0%, #121715 100%);
+  border: 1px solid #232B28;
+  border-radius: 16px;
+  padding: 1.4rem 1.5rem;
+}
+[class*="st-key-step"] {
+  background: #141917;
+  border: 1px solid #232B28;
+  border-radius: 16px;
+  padding: 1.2rem 1.3rem;
+}
+</style>
+"""
+
+
+def inject_css() -> None:
+    st.html(CSS)
+
+
+def tile(key: str, value: str, label: str, note: str = "", color: str = "green") -> None:
+    """A large headline number in a styled card (styled by the .st-key-tile* CSS)."""
+    with st.container(key=f"tile_{key}", height="stretch"):
+        st.markdown(f"# :{color}[{value}]")
+        st.markdown(f"**{label}**")
+        if note:
+            st.caption(note)
 
 
 @st.cache_data
@@ -52,28 +92,22 @@ def load_service() -> DemoService:
     return DemoService.from_env()
 
 
-def figure_path(name: str) -> Path | None:
-    path = APP_DATA / name
-    return path if path.exists() else None
-
-
 def reason_text(code: str | None) -> str:
     return REASON_TEXT.get(code or "", code or "")
 
 
 def outcome_badge(item: dict[str, Any], answerable: bool) -> None:
-    """One badge saying what happened: correct, wrong, answered a trap, or refused."""
+    """Green = correct, amber = refused, red = wrong (or answered a trick question)."""
     if item["answered"]:
         if not answerable:
-            st.badge("Answered a question it should refuse", icon=":material/error:", color="red")
+            st.badge("Wrong: answered a trick question", icon=":material/error:", color="red")
         elif item["correct"]:
-            st.badge("Correct", icon=":material/check_circle:", color="green")
+            st.badge("Answered correctly", icon=":material/check_circle:", color="green")
         else:
             st.badge("Wrong answer", icon=":material/cancel:", color="red")
     else:
-        color = "green" if not answerable else "orange"
-        label = "Refused (right call)" if not answerable else "Refused"
-        st.badge(label, icon=":material/do_not_disturb_on:", color=color)
+        label = "Refused safely" if not answerable else "Refused"
+        st.badge(label, icon=":material/do_not_disturb_on:", color="orange")
 
 
 def steps_markdown(steps: list[dict[str, Any]]) -> str:
@@ -104,16 +138,8 @@ def result_table(preview: dict[str, Any] | None, alt: str) -> None:
 
 
 def sidebar() -> None:
-    with st.sidebar:
-        st.markdown("**ClaimsSQL-Trust**")
-        st.caption(
-            "Text-to-SQL over synthetic Medicare claims (CMS DE-SynPUF) that can say "
-            "“I can't answer that from this database”. Small open models write the SQL; "
-            "three checks decide whether to trust it."
-        )
-        st.link_button("Code on GitHub (placeholder)", GITHUB_URL, icon=":material/code:",
-                       width="stretch")  # fmt: skip
-        st.link_button("Project report (placeholder)", REPORT_URL,
-                       icon=":material/description:", width="stretch")  # fmt: skip
-        st.caption("B.Tech CSE-AI project, IFHE. Data: CMS 2008-2010 DE-SynPUF Sample 1, "
-                   "fully synthetic.")
+    """Only a GitHub button, and only once a real URL is set; otherwise no sidebar."""
+    if GITHUB_URL:
+        with st.sidebar:
+            st.link_button("Code on GitHub", GITHUB_URL, icon=":material/code:",
+                           width="stretch")  # fmt: skip

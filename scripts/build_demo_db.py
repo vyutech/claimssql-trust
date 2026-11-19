@@ -1,10 +1,10 @@
 """Build the files the deployed demo needs.
 
   data/demo.duckdb           5,000 fixed random beneficiaries with all their claims
-  app_data/explorer.jsonl    what the "Benchmark explorer" shows, from a finished run
-  app_data/results.json      headline numbers for the Results page (from results/tables)
+  app_data/explorer.jsonl    what the Explorer page shows, from a finished run
+  app_data/results.json      numbers and chart data for Home and Results (results/tables)
   app_data/samples.json      one-click sample questions (dev split of the benchmark)
-  app_data/fig7_2_harmful_by_config.png   the headline figure (from results/figures)
+  app_data/examples.json     real cases from the run for the How-it-works page
 
 Usage:
     python scripts/build_demo_db.py
@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import shutil
 import sys
 from pathlib import Path
 
@@ -24,6 +23,8 @@ from claimssql.db.connection import DEFAULT_DB_PATH, get_connection
 from claimssql.db.demo import DEFAULT_N, DEFAULT_SALT, build_demo_db
 from claimssql.eval.explorer import (
     build_explorer_rows,
+    check_examples,
+    results_detail,
     results_summary,
     sample_questions,
     write_explorer,
@@ -82,17 +83,16 @@ def main(argv: list[str] | None = None) -> int:
         con.close()
     write_explorer(args.explorer_out, rows)
     app_data = args.explorer_out.parent
-    (app_data / "results.json").write_text(
-        json.dumps(results_summary(RESULTS_TABLES_DIR), indent=1), encoding="utf-8")
+    results = {**results_summary(RESULTS_TABLES_DIR), **results_detail(RESULTS_TABLES_DIR)}
+    (app_data / "results.json").write_text(json.dumps(results, indent=1), encoding="utf-8")
+    (app_data / "examples.json").write_text(
+        json.dumps(check_examples(rows), indent=1, ensure_ascii=False), encoding="utf-8")
     (app_data / "samples.json").write_text(
         json.dumps(sample_questions(list(questions.values())), indent=1, ensure_ascii=False),
         encoding="utf-8")  # fmt: skip
-    figure = REPO_ROOT / "results" / "figures" / "fig7_2_harmful_by_config.png"
-    if figure.exists():
-        shutil.copy2(figure, app_data / figure.name)
-    else:
-        print(f"WARNING: {figure} is missing - run the analysis notebook first.",
-              file=sys.stderr)  # fmt: skip
+    # The app draws its own charts from results.json; the greyscale PNGs in
+    # results/figures/ are only for the printed report. Remove an old copy.
+    (app_data / "fig7_2_harmful_by_config.png").unlink(missing_ok=True)
     models = sorted({row["model_key"] for row in rows})
     print(f"Wrote {args.explorer_out} ({args.explorer_out.stat().st_size / 1e6:.1f} MB, "
           f"{len(rows)} rows, models: {', '.join(models)})")

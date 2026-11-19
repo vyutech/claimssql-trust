@@ -160,8 +160,8 @@ figures use grey levels, hatching and markers, so they print in black and white.
 | `python -m jupyter execute notebooks/analysis.ipynb --inplace` | P7 | On Windows set `$env:PYTHONUTF8=1` first (Jupyter otherwise reads the notebook in the Windows code page and fails). Draws the report's figures from `results/tables/` and saves 300-dpi PNGs to `results/figures/` (needs `pip install -e ".[notebook]"`). |
 | `python scripts/make_kaggle_bundle.py` | P6 | Zips what generation needs (`src/`, `configs/`, the catalogue, `questions.jsonl`, `pyproject.toml`) into `dist/claimssql_bundle.zip`, with the git commit and a cache-key fingerprint inside. Warns about uncommitted changes. |
 | `python scripts/merge_cache.py cache_qwen.zip ...` | P6 | Copies the LLM cache downloaded from Kaggle into `results/cache/`, skipping files already present. Warns if a zip was made from a different commit. |
-| `python scripts/build_demo_db.py` | P7 | Builds `data/demo.duckdb` (5,000 fixed random beneficiaries with all their claims) and `app_data/explorer.jsonl` (what the benchmark explorer shows) from `results/runs/full.jsonl`. |
-| `streamlit run app/streamlit_app.py` | P7 | The demo app, three pages: Results (headline numbers and how it works), Explorer (every benchmark question with C0 and C4 side by side and the checks) and Ask (live questions on the demo database through the Groq model). Theme in `.streamlit/config.toml`. |
+| `python scripts/build_demo_db.py` | P7 | Builds `data/demo.duckdb` (5,000 fixed random beneficiaries with all their claims) and `app_data/` (explorer rows, results and chart data, real check examples, sample questions) from `results/runs/full.jsonl` and `results/tables/`. |
+| `streamlit run app/streamlit_app.py` | P7 | The demo app, six pages in a top bar: Home, How it works (the three checks with real examples, one question followed through), Results (RQ1–RQ4 findings and interactive charts), Explorer (every benchmark question with C0 and C4 side by side), Try it (live questions on the demo database through the Groq model) and About. Dark theme in `.streamlit/config.toml`; green = correct, amber = refused, red = wrong. |
 | `uvicorn claimssql.api.main:app` | P7 | The HTTP API: `GET /health`, `GET /schema`, `POST /ask`. |
 | `python scripts/make_space_bundle.py` | P7 | Collects the Hugging Face Space's files into `dist/space/` (see [docs/DEPLOY.md](docs/DEPLOY.md)). |
 
@@ -190,7 +190,7 @@ src/claimssql/
   finetune/         training-data generation (optional)
   api/              FastAPI service
 app/                streamlit_app.py (demo app)
-app_data/           explorer.jsonl for the app (generated, git-ignored)
+app_data/           data files for the app (generated, git-ignored)
 deploy/             Space requirements, README header and Dockerfile
 notebooks/          kaggle_generate.ipynb (generation on Kaggle), analysis.ipynb (figures)
 results/            runs/, tables/, figures/ (cache/ is git-ignored)

@@ -1,4 +1,4 @@
-"""Ask page: the live pipeline on the 5,000-member demo database."""
+"""Try it page: the live pipeline on the 5,000-member demo database."""
 
 import pandas as pd
 import streamlit as st
@@ -13,11 +13,13 @@ if "answer" not in st.session_state:
 if "run_now" not in st.session_state:
     st.session_state.run_now = False
 
-st.title("Ask your own question", icon=":material/chat:")
-st.caption("Runs on a 5,000-member subset of the synthetic data, so numbers differ from the "
-           "benchmark. One question takes up to two minutes on the free model tier. The demo "
-           "answers when the SQL passes V1 and V2 and at least 2 of 3 extra samples agree "
-           "(a demo setting, not a benchmark result).")
+st.title("Try it yourself")
+st.caption(
+    "Runs on a 5,000-member subset of the synthetic data, so numbers differ from the "
+    "benchmark. One question takes up to two minutes on the free model tier. The demo "
+    "answers when the SQL passes V1 and V2 and at least 2 of 3 extra samples agree "
+    "(a demo setting, not a benchmark result)."
+)
 
 
 def use_sample(text: str) -> None:
@@ -28,18 +30,32 @@ def use_sample(text: str) -> None:
 samples = load_json("samples.json")
 if samples:
     st.markdown("**Try a question from the benchmark**")
-    icons = {"Should answer": ":material/check_circle:",
-             "Tricky (trap tags)": ":material/warning:",
-             "Should refuse": ":material/do_not_disturb_on:"}  # fmt: skip
-    for column, (label, items) in zip(st.columns(len(samples)), samples.items(), strict=True):
-        with column.container(border=True, height="stretch"):
+    # Same colour meaning as everywhere: green = should answer, amber = should refuse.
+    icons = {"Should answer": ":green[:material/check_circle:]",
+             "Tricky (trap tags)": ":violet[:material/warning:]",
+             "Should refuse": ":orange[:material/do_not_disturb_on:]"}  # fmt: skip
+    for number, (column, (label, items)) in enumerate(
+        zip(st.columns(len(samples)), samples.items(), strict=True)
+    ):
+        with column.container(key=f"step_sample_{number}", height="stretch"):
             st.markdown(f"{icons.get(label, '')} **{label}**")
             for sample in items:
-                st.button(sample["question"], key=f"sample_{sample['id']}", width="stretch",
-                          type="tertiary", on_click=use_sample, args=(sample["question"],))
+                st.button(
+                    sample["question"],
+                    key=f"sample_{sample['id']}",
+                    width="stretch",
+                    type="tertiary",
+                    on_click=use_sample,
+                    args=(sample["question"],),
+                )
 
-st.text_area("Your question", key="question", max_chars=1000, height=80,
-             placeholder="How many members had diabetes in 2009?")
+st.text_area(
+    "Your question",
+    key="question",
+    max_chars=1000,
+    height=80,
+    placeholder="How many members had diabetes in 2009?",
+)
 clicked = st.button("Ask", type="primary", icon=":material/send:",
                     disabled=not st.session_state.question.strip())  # fmt: skip
 
@@ -68,21 +84,26 @@ if clicked or st.session_state.run_now:
 
 answer = st.session_state.answer
 if answer:
-    with st.container(border=True):
+    with st.container(key="step_answer"):
         st.markdown(f"**Question:** {answer['question']}")
         if answer["answered"]:
-            st.success("The SQL passed every check.", title="Answered",
-                       icon=":material/check_circle:")
-            st.code(answer["sql"], language="sql")
-            st.dataframe(pd.DataFrame(answer["rows"], columns=answer["columns"]),
-                         hide_index=True, height="content", alt="Result of the answer")
+            st.success(
+                "The SQL passed every check.", title="Answered", icon=":material/check_circle:"
+            )
+            st.code(answer["sql"], language="sql", wrap_lines=True)
+            st.dataframe(
+                pd.DataFrame(answer["rows"], columns=answer["columns"]),
+                hide_index=True,
+                height="content",
+                alt="Result of the answer",
+            )
             if answer["more_rows"]:
                 st.caption("First 100 rows only.")
         else:
             st.warning(answer["reason_text"], title="Refused", icon=":material/do_not_disturb_on:")
             if answer["model_sql"]:
                 with st.expander("SQL the model wrote (not used)", icon=":material/code:"):
-                    st.code(answer["model_sql"], language="sql")
+                    st.code(answer["model_sql"], language="sql", wrap_lines=True)
             if answer["model_reason"]:
                 st.caption(f"The model's own explanation: {answer['model_reason']}")
 
@@ -102,5 +123,7 @@ if answer:
             color, icon = STEP_STYLE[state]
             badges.append(f":{color}-badge[{icon} {name}: {detail}]")
         st.markdown("**Checks** " + " → ".join(badges))
-        st.caption(f"Model {answer['model']} · {answer['calls']} calls "
-                   f"({answer['cached_calls']} from the cache)")
+        st.caption(
+            f"Model {answer['model']} · {answer['calls']} calls "
+            f"({answer['cached_calls']} from the cache)"
+        )

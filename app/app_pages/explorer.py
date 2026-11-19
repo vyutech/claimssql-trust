@@ -20,16 +20,20 @@ CONFIG_NOTES = {"C0": "The model must answer; nothing is checked.",
 
 rows = load_explorer()
 if not rows:
-    st.info("No explorer data yet. Build it with `python scripts/build_demo_db.py`.",
-            icon=":material/info:")
+    st.info(
+        "No explorer data yet. Build it with `python scripts/build_demo_db.py`.",
+        icon=":material/info:",
+    )
     st.stop()
 
 if "explorer_pick" not in st.session_state:
     st.session_state.explorer_pick = None  # (model, question id) chosen by the button
 
-st.title("Explore the benchmark", icon=":material/manage_search:")
-st.caption("Every benchmark question, as each model answered it without checks (C0) and with "
-           "all checks (C4). Gold answers are computed on the full database.")
+st.title("Explorer")
+st.caption(
+    "Every benchmark question, as each model answered it without checks (C0) and with "
+    "all checks (C4). Gold answers are computed on the full database."
+)
 
 models = list(dict.fromkeys(r["model_key"] for r in rows))
 labels = {r["model_key"]: r["model"] for r in rows}
@@ -56,57 +60,68 @@ with st.container(horizontal=True, vertical_alignment="bottom"):
     groups = st.multiselect("Groups", list(GROUP_NAMES), format_func=GROUP_NAMES.get,
                             key="groups", placeholder="All groups")  # fmt: skip
     tag = st.selectbox("Trap tag", tags, index=None, key="tag", placeholder="Any tag")
-    saved_only = st.toggle("Checks saved it", key="saved_only",
-                           help="Only cases where C0 gave a harmful answer and C4 refused.")
-    st.button("Show me an interesting case", key="interesting", icon=":material/casino:",
-              type="primary",
-              on_click=show_interesting)
+    saved_only = st.toggle(
+        "Checks saved it",
+        key="saved_only",
+        help="Only cases where C0 gave a harmful answer and C4 refused.",
+    )
+    st.button(
+        "Show me an interesting case",
+        key="interesting",
+        icon=":material/casino:",
+        type="primary",
+        on_click=show_interesting,
+    )
 
 choices = filter_rows(rows, model, groups, tag, saved_only)
 saved = sum(saved_by_checks(r) for r in filter_rows(rows, model))
-st.caption(f"{len(choices)} matching questions. For {labels[model]}, the checks turned "
-           f"{saved} harmful C0 answers into refusals.")
+st.caption(
+    f"{len(choices)} matching questions. For {labels[model]}, the checks turned "
+    f"{saved} harmful C0 answers into refusals."
+)
 if not choices:
     st.info("No question matches these filters.", icon=":material/filter_alt_off:")
     st.stop()
 
 index = 0
 if st.session_state.explorer_pick:
-    picked = [i for i, r in enumerate(choices)
-              if (r["model_key"], r["question_id"]) == st.session_state.explorer_pick]
+    picked = [
+        i
+        for i, r in enumerate(choices)
+        if (r["model_key"], r["question_id"]) == st.session_state.explorer_pick
+    ]
     index = picked[0] if picked else 0
 row = st.selectbox("Question", choices, index=index,
                    format_func=lambda r: f"{r['question_id']} · {r['question']}")  # fmt: skip
 st.session_state.explorer_pick = (row["model_key"], row["question_id"])
 
-with st.container(border=True):
+with st.container(key="step_question"):
     st.subheader(row["question"])
     with st.container(horizontal=True):
         st.badge(GROUP_NAMES.get(row["group"], row["group"]), color="blue")
         st.badge(f"{row['split']} split", color="gray")
         for trap in row.get("trap_tags", []):
-            st.badge(trap.replace("_", " "), icon=":material/warning:", color="orange")
+            st.badge(trap.replace("_", " "), icon=":material/warning:", color="violet")
     if row["answerable"]:
         with st.expander("Gold answer", icon=":material/verified:"):
-            st.code(row["gold_sql"], language="sql")
+            st.code(row["gold_sql"], language="sql", wrap_lines=True)
             result_table(row["gold"], alt="Result of the gold SQL")
     else:
-        st.markdown(f":material/block: **Cannot be answered from this database.** "
-                    f"{row['notes']}")
+        st.markdown(f":material/block: **Cannot be answered from this database.** {row['notes']}")
 
 for column, config in zip(st.columns(2, gap="medium"), ("C0", "C4"), strict=True):
     item = row["configs"][config]
-    with column.container(border=True, height="stretch"):
-        st.markdown(f"**{CONFIG_TITLES[config]}**")
+    with column.container(key=f"step_{config.lower()}", height="stretch"):
+        st.markdown(f"### {CONFIG_TITLES[config]}")
         st.caption(CONFIG_NOTES[config])
         outcome_badge(item, row["answerable"])
         if item["answered"]:
-            st.code(item["sql"], language="sql")
+            st.code(item["sql"], language="sql", wrap_lines=True)
             result_table(item["result"], alt=f"Result of the {config} answer")
         else:
             st.markdown(f"**Why:** {reason_text(item['reason_code'])}")
             if item.get("model_sql"):
                 with st.expander("SQL the model wrote (not used)", icon=":material/code:"):
-                    st.code(item["model_sql"], language="sql")
+                    st.code(item["model_sql"], language="sql", wrap_lines=True)
         st.markdown("**Checks**")
         verification_row(item, config, row["tau"])
