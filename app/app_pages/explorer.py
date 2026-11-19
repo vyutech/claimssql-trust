@@ -31,13 +31,17 @@ if "explorer_pick" not in st.session_state:
 
 st.title("Explorer")
 st.markdown(
-    "**How to read this page:** Pick a model and a question. Gold = the correct answer. "
-    "C0 = the model's answer with no checks; C4 = with all three checks. :green[Green] = "
-    "correct, :red[red] = wrong, :orange[amber] = refused (with the reason)."
-)
-st.caption(
     "Every benchmark question, as each model answered it without checks (C0) and with "
     "all checks (C4). Gold answers are computed on the full database."
+)
+# Small and grey on purpose, so the guide does not compete with the title; only the
+# dots carry the theme colours ("orange" is set to amber in .streamlit/config.toml).
+st.caption(
+    "**How to read this page**\n"
+    "- Pick a model and a question\n"
+    "- Gold = the correct answer\n"
+    "- C0 = no checks · C4 = all three checks\n"
+    "- :green[●] correct · :red[●] wrong · :orange[●] refused (with the reason)"
 )
 
 models = list(dict.fromkeys(r["model_key"] for r in rows))

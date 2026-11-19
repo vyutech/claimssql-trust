@@ -267,7 +267,9 @@ def test_results_page(app_data):
 def test_explorer_page_and_filters(app_data):
     at = run_page("app_pages/explorer.py")
     assert at.subheader[0].value == "question E-1"
-    assert at.markdown[0].value.startswith("**How to read this page:** Pick a model")
+    assert at.markdown[0].value.startswith("Every benchmark question, as each model")
+    assert at.caption[0].value.startswith("**How to read this page**\n- Pick a model")
+    assert ":green[●] correct · :red[●] wrong · :orange[●] refused" in at.caption[0].value
     assert "across all 3 questions" in at.caption[1].value  # model "a" has 3 rows
     assert at.toggle(key="saved_only").label == (
         "Only cases where the checks prevented a harmful answer")
