@@ -59,6 +59,46 @@ CSS = """
   border-radius: 16px;
   padding: 1.2rem 1.3rem;
 }
+/* How it works walkthrough: the question strip ... */
+.walk-question {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem 1rem;
+  background: #121816;
+  border-left: 3px solid #22C55E;
+  border-radius: 0 10px 10px 0;
+  padding: 0.85rem 1.2rem;
+}
+.walk-label { color: #22C55E; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; }
+.walk-text { color: #E7ECEA; font-size: 1.15rem; font-weight: 500; }
+/* ... and the four cards: 4 per row, 2 on medium screens, 1 on phones. */
+/* Streamlit wraps each child of a horizontal container in a div; that wrapper is
+   the flex item, so the widths go on it. */
+.st-key-walk_cards { flex-wrap: wrap; align-items: stretch; }
+.st-key-walk_cards > div { flex: 1 1 calc(25% - 0.75rem); min-width: 0; }
+@media (max-width: 1100px) {
+  .st-key-walk_cards > div { flex-basis: calc(50% - 0.5rem); }
+}
+@media (max-width: 640px) {
+  .st-key-walk_cards > div { flex-basis: 100%; }
+}
+[class*="st-key-walk_card_"] {
+  width: 100%;
+  background: #151B19;
+  border: 1px solid #26302C;
+  border-radius: 14px;
+  padding: 1rem 1.1rem;
+}
+.walk-head {
+  display: flex; align-items: center; gap: 0.6rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid #26302C;
+}
+.walk-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.5rem; height: 1.5rem; border-radius: 50%;
+  background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.55);
+  color: #22C55E; font-size: 0.8rem; font-weight: 700;
+}
+.walk-title { font-weight: 700; color: #E7ECEA; }
 /* Glossary group headings: thin green bar on the left, space above each group. */
 [class*="st-key-ghead"] {
   border-left: 3px solid #22C55E;

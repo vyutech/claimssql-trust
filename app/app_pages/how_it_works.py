@@ -1,11 +1,28 @@
 """How it works: the problem, the three checks with real examples, one question
 walked through, and a glossary."""
 
+from contextlib import contextmanager
+from html import escape
+
 import streamlit as st
 
+from claimssql.eval.explorer import pretty_sql
 from ui_common import load_json, reason_text
 
 examples = load_json("examples.json")
+
+
+@contextmanager
+def card(number: int, title: str):
+    """A walkthrough card: numbered header with a divider, then the content
+    (styled by the .st-key-walk_card* and .walk-head CSS)."""
+    with st.container(key=f"walk_card_{number}"):
+        st.html(
+            f'<div class="walk-head"><span class="walk-num">{number}</span>'
+            f'<span class="walk-title">{escape(title)}</span></div>'
+        )
+        yield
+
 
 st.title("How it works")
 st.markdown(
@@ -68,32 +85,34 @@ if walk:
     gold = walk["gold_result"]["rows"][0][0] if walk.get("gold_result") else None
     c0 = walk["c0"]["result"]["rows"][0][0] if walk["c0"].get("result") else None
     check = walk["verification"]
-    strip = st.columns(5, gap="small")
-    with strip[0].container(key="step_w1", height="stretch"):
-        st.markdown("**1 · Question**")
-        st.markdown(walk["question"])
-    with strip[1].container(key="step_w2", height="stretch"):
-        st.markdown("**2 · The model's SQL**")
-        st.code(walk["sql"], language="sql", wrap_lines=True)
-    with strip[2].container(key="step_w3", height="stretch"):
-        st.markdown("**3 · Why it is wrong**")
-        st.markdown(walk["owner_note"])
-        if c0 is not None and gold is not None:
-            st.markdown(
-                f":red-badge[Returns {c0:,}] every member, not the "
-                f":green-badge[{gold:,}] who really have 3 or more."
-            )
-    with strip[3].container(key="step_w4", height="stretch"):
-        st.markdown("**4 · The checks**")
-        st.markdown(":green-badge[:material/check_circle: V1 · names exist]")
-        st.markdown(":green-badge[:material/check_circle: V2 · it runs]")
-        st.markdown(f":red-badge[:material/cancel: V3 · {check['agreement']:.0%} agree]")
-        st.caption("The SQL is valid, so only the agreement check can catch this mistake.")
-    with strip[4].container(key="step_w5", height="stretch"):
-        st.markdown("**5 · The decision**")
-        st.markdown("No checks (C0)  \n:red-badge[:material/cancel: Wrong answer]")
-        st.markdown("All checks (C4)  \n:orange-badge[:material/do_not_disturb_on: Refused]")
-        st.caption(reason_text(walk["reason_code"]))
+    # The question as a full-width strip (styled by the .walk-question CSS).
+    st.html(
+        '<div class="walk-question"><span class="walk-label">QUESTION</span>'
+        f'<span class="walk-text">{escape(walk["question"])}</span></div>'
+    )
+    # Four cards in a wrapping row: 4 per row, 2 on medium screens, 1 on phones
+    # (the widths are set in the .st-key-walk_cards CSS, not with st.columns, which
+    # can only switch from 4 straight to 1).
+    with st.container(key="walk_cards", horizontal=True, gap="small"):
+        with card(1, "The model's SQL"):
+            # Laid out one clause and one flag per line; scrolls inside the card if long.
+            st.code(pretty_sql(walk["sql"]), language="sql", height=320)
+        with card(2, "Why it is wrong"):
+            if c0 is not None and gold is not None:
+                st.markdown(
+                    f":red-badge[Returns {c0:,}] every member, not the "
+                    f":green-badge[{gold:,}] who really have 3 or more."
+                )
+            st.caption(walk["owner_note"])
+        with card(3, "The checks"):
+            st.markdown(":green-badge[:material/check_circle: V1 · names exist]")
+            st.markdown(":green-badge[:material/check_circle: V2 · it runs]")
+            st.markdown(f":red-badge[:material/cancel: V3 · {check['agreement']:.0%} agree]")
+            st.caption("The SQL is valid, so only the agreement check can catch this mistake.")
+        with card(4, "The decision"):
+            st.markdown("No checks (C0)  \n:red-badge[:material/cancel: Wrong answer]")
+            st.markdown("All checks (C4)  \n:orange-badge[:material/do_not_disturb_on: Refused]")
+            st.caption(reason_text(walk["reason_code"]))
 
 
 # ------------------------------------------------------------- glossary ----

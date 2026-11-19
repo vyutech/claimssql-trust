@@ -136,6 +136,17 @@ def test_results_detail_from_the_report_tables():
     assert rq4["excludes_zero"] is False  # the approved RQ4 finding: not clearly different
 
 
+def test_pretty_sql_one_clause_and_one_term_per_line():
+    sql = ("SELECT COUNT(*) FROM beneficiary WHERE year = 2010 AND (SP_ALZHDMTA + SP_CHF + "
+           "SP_CHRNKIDN + SP_CNCR) >= 3")  # fmt: skip
+    assert ex.pretty_sql(sql).splitlines() == [
+        "SELECT", "  COUNT(*)", "FROM beneficiary", "WHERE", "  year = 2010 AND (",
+        "    SP_ALZHDMTA", "    + SP_CHF", "    + SP_CHRNKIDN", "    + SP_CNCR", "  ) >= 3",
+    ]  # fmt: skip
+    assert ex.pretty_sql("SELECT a + b FROM t") == "SELECT\n  a + b\nFROM t"  # short: kept
+    assert ex.pretty_sql("SELEC nonsense (((") == "SELEC nonsense ((("  # unparseable: as is
+
+
 def test_check_examples_pick_one_case_per_check():
     examples = ex.check_examples(ROWS + [
         row("E-3", "a", "easy", item(True, False, "answerable_wrong"),
@@ -248,7 +259,20 @@ def test_how_it_works_page(app_data):
     assert "V1 · Does every table and column exist?" in page
     assert "V3 · Do 5 attempts agree?" in page
     assert ":red-badge[Returns 112,754]" in page and ":green-badge[35,857]" in page
-    assert "Flags are 1 = yes, 2 = no." in page
+    # Walkthrough: the question as a full-width strip, then four numbered cards.
+    html = [h.value for h in at.get("html")]
+    assert any('<span class="walk-label">QUESTION</span>' in h and "question E-1" in h
+               for h in html)  # fmt: skip
+    heads = [h for h in html if h.startswith('<div class="walk-head">')]
+    assert heads == [
+        f'<div class="walk-head"><span class="walk-num">{n}</span>'
+        f'<span class="walk-title">{title}</span></div>'
+        for n, title in enumerate(["The model&#x27;s SQL", "Why it is wrong", "The checks",
+                                   "The decision"], start=1)
+    ]  # fmt: skip
+    # The main point first; the owner's explanation as grey caption text.
+    assert "Flags are 1 = yes, 2 = no." in [c.value for c in at.caption]
+    assert at.code[-1].value == "SELECT\n  1"  # the walkthrough SQL, laid out by pretty_sql
     assert at.expander[-1].label == "Glossary"
     glossary = at.expander[-1]
     headings = [m.value for m in glossary.markdown if m.value.startswith(":green[**")]

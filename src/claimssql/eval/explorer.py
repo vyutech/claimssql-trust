@@ -292,6 +292,28 @@ def results_detail(tables: Path) -> dict[str, Any]:
             "differences": differences}  # fmt: skip
 
 
+def pretty_sql(sql: str, width: int = 40) -> str:
+    """SQL laid out for a narrow card: one clause per line (sqlglot's pretty printer),
+    and a long chain of `a + b + c` split one term per line. Display only: the SQL
+    itself is unchanged, and unparseable SQL is returned as it is."""
+    import sqlglot  # lazy, like the verifiers: only needed when showing SQL
+
+    try:
+        text = sqlglot.transpile(sql, read="duckdb", write="duckdb", pretty=True)[0]
+    except sqlglot.errors.ParseError:
+        return sql
+    lines = []
+    for line in text.splitlines():
+        if len(line) > width and " + " in line:
+            indent = line[: len(line) - len(line.lstrip())]
+            first, *rest = line.strip().split(" + ")
+            lines.append(indent + first)
+            lines.extend(f"{indent}+ {term}" for term in rest)
+        else:
+            lines.append(line)
+    return "\n".join(lines)
+
+
 def _example(row: dict[str, Any], config: str) -> dict[str, Any]:
     item = row["configs"][config]
     return {
