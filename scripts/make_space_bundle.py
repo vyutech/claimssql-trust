@@ -1,11 +1,12 @@
 """Collect exactly what the Hugging Face Space needs into dist/space/.
 
-    app/streamlit_app.py     the app
+    app/                     the app: entry point, shared helpers, pages
+    .streamlit/config.toml   the app's theme
     src/claimssql/           the package (imported from src/, not installed)
     configs/                 models and experiment settings
     schema/catalogue.yaml    the schema the model is shown
     data/demo.duckdb         the 5,000-member demo database
-    app_data/explorer.jsonl  precomputed benchmark explorer data
+    app_data/                precomputed explorer data, headline results, sample questions
     requirements.txt         from deploy/requirements.txt
     README.md                the Space header (sdk: streamlit or docker)
     Dockerfile               only with --sdk docker
@@ -30,12 +31,13 @@ from claimssql.config import REPO_ROOT
 DEFAULT_OUT = REPO_ROOT / "dist" / "space"
 STREAMLIT_VERSION = "1.67.0"
 COPY = [
-    "app/streamlit_app.py",
+    "app",  # streamlit_app.py, ui_common.py and the pages in app_pages/
+    ".streamlit/config.toml",  # the theme (never secrets.toml)
     "src/claimssql",
     "configs",
     "schema/catalogue.yaml",
     "data/demo.duckdb",
-    "app_data/explorer.jsonl",
+    "app_data",  # explorer.jsonl, results.json, samples.json, the headline figure
 ]
 SKIP = shutil.ignore_patterns("__pycache__", "*.pyc", "*.egg-info")
 
@@ -94,7 +96,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     size = sum((args.out / f).stat().st_size for f in files) / 1e6
     print(f"Wrote {args.out} ({len(files)} files, {size:.1f} MB, sdk: {args.sdk})")
-    for name in ("data/demo.duckdb", "app_data/explorer.jsonl"):
+    for name in ("data/demo.duckdb", "app_data/explorer.jsonl", "app_data/results.json"):
         print(f"  {name}: {(args.out / name).stat().st_size / 1e6:.1f} MB")
     print("Next: follow docs/DEPLOY.md to upload it to the Space.")
     return 0

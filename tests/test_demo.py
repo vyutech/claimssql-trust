@@ -344,10 +344,12 @@ def load_script(name):
 @pytest.fixture()
 def fake_root(tmp_path) -> Path:
     root = tmp_path / "repo"
-    for name in ("app/streamlit_app.py", "src/claimssql/__init__.py", "configs/models.yaml",
+    for name in ("app/streamlit_app.py", "app/app_pages/results.py", "app/ui_common.py",
+                 ".streamlit/config.toml", ".streamlit/secrets.toml",
+                 "src/claimssql/__init__.py", "configs/models.yaml",
                  "schema/catalogue.yaml", "data/demo.duckdb", "app_data/explorer.jsonl",
-                 "src/claimssql/__pycache__/x.pyc", ".env", "data/claims.duckdb",
-                 "results/cache/ab/x.json", "CLAUDE.md"):  # fmt: skip
+                 "app_data/results.json", "src/claimssql/__pycache__/x.pyc", ".env",
+                 "data/claims.duckdb", "results/cache/ab/x.json", "CLAUDE.md"):  # fmt: skip
         (root / name).parent.mkdir(parents=True, exist_ok=True)
         (root / name).write_text("secret" if name == ".env" else "x", encoding="utf-8")
     shutil.copytree(ROOT / "deploy", root / "deploy")
@@ -359,10 +361,12 @@ def test_space_bundle_contents(fake_root, tmp_path):
     out = tmp_path / "space"
     files = bundle.build_space(out, "streamlit", root=fake_root)
     assert files == [
-        "README.md", "app/streamlit_app.py", "app_data/explorer.jsonl", "configs/models.yaml",
-        "data/demo.duckdb", "requirements.txt", "schema/catalogue.yaml",
-        "src/claimssql/__init__.py",
+        ".streamlit/config.toml", "README.md", "app/app_pages/results.py",
+        "app/streamlit_app.py", "app/ui_common.py", "app_data/explorer.jsonl",
+        "app_data/results.json", "configs/models.yaml", "data/demo.duckdb", "requirements.txt",
+        "schema/catalogue.yaml", "src/claimssql/__init__.py",
     ]  # fmt: skip
+    assert ".streamlit/secrets.toml" not in files  # only the theme file is copied
     readme = (out / "README.md").read_text(encoding="utf-8")
     assert readme.startswith("---\n") and "sdk: streamlit" in readme
     assert "app_file: app/streamlit_app.py" in readme and "{" not in readme

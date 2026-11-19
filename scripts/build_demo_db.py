@@ -2,6 +2,9 @@
 
   data/demo.duckdb           5,000 fixed random beneficiaries with all their claims
   app_data/explorer.jsonl    what the "Benchmark explorer" shows, from a finished run
+  app_data/results.json      headline numbers for the Results page (from results/tables)
+  app_data/samples.json      one-click sample questions (dev split of the benchmark)
+  app_data/fig7_2_harmful_by_config.png   the headline figure (from results/figures)
 
 Usage:
     python scripts/build_demo_db.py
@@ -12,13 +15,19 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import sys
 from pathlib import Path
 
-from claimssql.config import REPO_ROOT, RESULTS_RUNS_DIR
+from claimssql.config import REPO_ROOT, RESULTS_RUNS_DIR, RESULTS_TABLES_DIR
 from claimssql.db.connection import DEFAULT_DB_PATH, get_connection
 from claimssql.db.demo import DEFAULT_N, DEFAULT_SALT, build_demo_db
-from claimssql.eval.explorer import build_explorer_rows, write_explorer
+from claimssql.eval.explorer import (
+    build_explorer_rows,
+    results_summary,
+    sample_questions,
+    write_explorer,
+)
 from claimssql.eval.run_benchmark import read_run
 from claimssql.schema.catalogue import load_catalogue, validate_against_db
 
@@ -72,6 +81,18 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         con.close()
     write_explorer(args.explorer_out, rows)
+    app_data = args.explorer_out.parent
+    (app_data / "results.json").write_text(
+        json.dumps(results_summary(RESULTS_TABLES_DIR), indent=1), encoding="utf-8")
+    (app_data / "samples.json").write_text(
+        json.dumps(sample_questions(list(questions.values())), indent=1, ensure_ascii=False),
+        encoding="utf-8")  # fmt: skip
+    figure = REPO_ROOT / "results" / "figures" / "fig7_2_harmful_by_config.png"
+    if figure.exists():
+        shutil.copy2(figure, app_data / figure.name)
+    else:
+        print(f"WARNING: {figure} is missing - run the analysis notebook first.",
+              file=sys.stderr)  # fmt: skip
     models = sorted({row["model_key"] for row in rows})
     print(f"Wrote {args.explorer_out} ({args.explorer_out.stat().st_size / 1e6:.1f} MB, "
           f"{len(rows)} rows, models: {', '.join(models)})")

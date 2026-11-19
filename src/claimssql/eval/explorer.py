@@ -73,6 +73,7 @@ def _verification(record: dict[str, Any], config: str) -> dict[str, Any]:
         "agreement": v3.get("agreement") if config == "C4" else None,
         "cluster_sizes": v3.get("cluster_sizes") if config == "C4" else None,
         "k": v3.get("k") if config == "C4" else None,
+        "greedy_in_majority": v3.get("greedy_in_majority") if config == "C4" else None,
     }
 
 
@@ -119,6 +120,7 @@ def build_explorer_rows(
             "split": record.get("split"),
             "answerable": record["answerable"],
             "notes": question.get("notes", ""),
+            "trap_tags": list(question.get("trap_tags") or []),
             "gold_sql": question.get("gold_sql"),
             "gold": runner.preview(question.get("gold_sql")),
             "tau": tau,
@@ -145,3 +147,139 @@ def read_explorer(path: Path) -> list[dict[str, Any]]:
         return []
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()
             if line.strip()]  # fmt: skip
+
+
+# ------------------------------------------------- what the app does with rows ----
+
+HARMFUL_REGIONS = ("answerable_wrong", "infeasible_answered")
+
+
+def saved_by_checks(row: dict[str, Any]) -> bool:
+    """C0 gave a harmful answer and C4 abstained: the checks prevented a mistake."""
+    return (row["configs"]["C0"]["region"] in HARMFUL_REGIONS
+            and not row["configs"]["C4"]["answered"])  # fmt: skip
+
+
+def filter_rows(
+    rows: list[dict[str, Any]],
+    model: str | None = None,
+    groups: list[str] | None = None,
+    tag: str | None = None,
+    saved_only: bool = False,
+) -> list[dict[str, Any]]:
+    return [
+        row for row in rows
+        if (model is None or row["model_key"] == model)
+        and (not groups or row["group"] in groups)
+        and (tag is None or tag in row.get("trap_tags", []))
+        and (not saved_only or saved_by_checks(row))
+    ]  # fmt: skip
+
+
+def pick_interesting(rows: list[dict[str, Any]], rng: Any) -> dict[str, Any] | None:
+    """A random case where the checks saved the day, or any case if there is none."""
+    pool = [row for row in rows if saved_by_checks(row)] or rows
+    return rng.choice(pool) if pool else None
+
+
+def verification_steps(item: dict[str, Any], config: str, tau: float) -> list[dict[str, Any]]:
+    """The checks as a row of steps, each {name, status, detail}.
+
+    status: pass / fail; skipped = there was no SQL to check; unused-pass /
+    unused-fail = C0 does not use the checks, shown for comparison only.
+    """
+    check = item["verification"]
+    has_sql = bool(item.get("model_sql"))
+    used = config == "C4"
+
+    def status(passed: bool) -> str:
+        if not has_sql:
+            return "skipped"
+        if not used:
+            return "unused-pass" if passed else "unused-fail"
+        return "pass" if passed else "fail"
+
+    unknown = check["unknown_tables"] + check["unknown_columns"]
+    if unknown:
+        v1_detail = "unknown: " + ", ".join(unknown)
+    elif check["parse_error"]:
+        v1_detail = "cannot parse"
+    else:
+        v1_detail = "all names exist"
+    steps = [
+        {"name": "Model", "status": "pass" if has_sql else "fail",
+         "detail": "wrote SQL" if has_sql else "gave no SQL"},
+        {"name": "V1 schema", "status": status(not unknown and not check["parse_error"]),
+         "detail": v1_detail},
+        {"name": "V2 dry run", "status": status(check["exec_error_class"] is None),
+         "detail": check["exec_error_class"] or "runs"},
+    ]  # fmt: skip
+    if used:
+        agreement = check.get("agreement")
+        passed = (agreement is not None and agreement >= tau
+                  and bool(check.get("greedy_in_majority")))  # fmt: skip
+        if agreement is None:
+            detail = "no samples ran"
+        else:
+            detail = f"{agreement:.0%} agree, needs {tau:.0%}"
+        steps.append({"name": "V3 agreement", "status": status(passed), "detail": detail})
+    if not has_sql:
+        for step in steps[1:]:  # without SQL there was nothing to check
+            step["detail"] = "not run"
+    return steps
+
+
+# ------------------------------------------ files the app reads (app_data/) ----
+
+
+def _read_csv(path: Path) -> list[dict[str, str]]:
+    import csv
+
+    with path.open(newline="", encoding="utf-8") as f:
+        return list(csv.DictReader(f))
+
+
+def results_summary(tables: Path) -> dict[str, Any]:
+    """Headline numbers for the app's Results page, from the report tables (test split)."""
+    harmful = {(r["model"], r["config"]): r for r in _read_csv(tables / "e3_harmful_ci.csv")}
+    rs = {(r["model"], r["config"]): r for r in _read_csv(tables / "e2_rs_ci.csv")}
+    cost = {r["model_key"]: r for r in _read_csv(tables / "e5_latency_cost.csv")}
+    models = list(dict.fromkeys(model for model, _ in harmful))
+    summary: dict[str, Any] = {"n_test": None, "models": []}
+    for model in models:
+        c0, c4 = harmful[(model, "C0")], harmful[(model, "C4")]
+        summary["n_test"] = int(c0["n"])
+        summary["models"].append({
+            "model_key": model,
+            "model": cost[model]["model"] if model in cost else model,
+            "tau": float(c4["tau"]),
+            "harmful_c0": float(c0["harmful"]), "harmful_c4": float(c4["harmful"]),
+            "harmful_c4_lo": float(c4["harmful_lo"]), "harmful_c4_hi": float(c4["harmful_hi"]),
+            "rs10_c0": float(rs[(model, "C0")]["rs_10"]),
+            "rs10_c4": float(rs[(model, "C4")]["rs_10"]),
+            "coverage_c4": float(rs[(model, "C4")]["coverage"]),
+            "ex_c0": float(rs[(model, "C0")]["ex"]), "ex_c4": float(rs[(model, "C4")]["ex"]),
+        })  # fmt: skip
+    return summary
+
+
+# One-click questions for the Ask page, taken from the owner's benchmark - dev
+# split only, so no test question is exposed. First by id within each group.
+SAMPLE_GROUPS = {
+    "Should answer": (("easy",), 3),
+    "Tricky (trap tags)": (("medium",), 3),
+    "Should refuse": (("T1", "T2", "T3", "T4"), 1),  # one per trap group
+}
+
+
+def sample_questions(questions: list[dict[str, Any]]) -> dict[str, list[dict[str, str]]]:
+    dev = sorted((q for q in questions if q.get("split") == "dev"), key=lambda q: q["id"])
+    samples = {}
+    for label, (groups, per_group) in SAMPLE_GROUPS.items():
+        picked = []
+        for group in groups:
+            members = [q for q in dev if q["group"] == group]
+            picked += members[:per_group]
+        samples[label] = [{"id": q["id"], "group": q["group"], "question": q["question"],
+                           "trap_tags": list(q.get("trap_tags") or [])} for q in picked]
+    return samples

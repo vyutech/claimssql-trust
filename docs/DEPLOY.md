@@ -33,8 +33,14 @@ Use `--sdk docker` in the second command if step 0 said so. This writes
 `dist/space/`, which is exactly the Space's content. It contains no `.env`, no
 full database and no LLM cache.
 
-Rebuild both after a new benchmark run (for example when `mid_oss` is verified),
-so the explorer shows the new model.
+Rebuild both after a new benchmark run, so the app shows the new results.
+`build_demo_db.py` also copies the headline numbers (from `results/tables/`) and
+the headline figure (from `results/figures/`), so run the report and the analysis
+notebook first.
+
+Before the first deployment, replace the two placeholder links in the app's
+sidebar (`GITHUB_URL` and `REPORT_URL` at the top of `app/ui_common.py`) with
+your real repository and report, then build the bundle.
 
 ## 2. Create the Space
 
@@ -59,8 +65,12 @@ The easiest way is the web upload:
 
 1. In the Space: **Files** → **+ Contribute** → **Upload files**.
 2. Drag the **contents** of `dist/space/` (not the folder itself) into the box.
-   Keep the folder structure: `app/`, `src/`, `configs/`, `schema/`, `data/`,
-   `app_data/`, plus `README.md` and `requirements.txt` (and `Dockerfile`).
+   Keep the folder structure: `.streamlit/`, `app/`, `src/`, `configs/`, `schema/`,
+   `data/`, `app_data/`, plus `README.md` and `requirements.txt` (and `Dockerfile`).
+   Check afterwards that `.streamlit/config.toml` is listed in the Space's files:
+   some systems hide folders whose names start with a dot, and without it the app
+   falls back to Streamlit's default look. If it is missing, use the command-line
+   upload below, which always includes it.
 3. **Commit changes to main**.
 
 `data/demo.duckdb` is larger than 10 MB; Hugging Face stores such files with

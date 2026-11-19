@@ -161,7 +161,7 @@ figures use grey levels, hatching and markers, so they print in black and white.
 | `python scripts/make_kaggle_bundle.py` | P6 | Zips what generation needs (`src/`, `configs/`, the catalogue, `questions.jsonl`, `pyproject.toml`) into `dist/claimssql_bundle.zip`, with the git commit and a cache-key fingerprint inside. Warns about uncommitted changes. |
 | `python scripts/merge_cache.py cache_qwen.zip ...` | P6 | Copies the LLM cache downloaded from Kaggle into `results/cache/`, skipping files already present. Warns if a zip was made from a different commit. |
 | `python scripts/build_demo_db.py` | P7 | Builds `data/demo.duckdb` (5,000 fixed random beneficiaries with all their claims) and `app_data/explorer.jsonl` (what the benchmark explorer shows) from `results/runs/full.jsonl`. |
-| `streamlit run app/streamlit_app.py` | P7 | The demo app: benchmark explorer, and live questions on the demo database through the Groq model. |
+| `streamlit run app/streamlit_app.py` | P7 | The demo app, three pages: Results (headline numbers and how it works), Explorer (every benchmark question with C0 and C4 side by side and the checks) and Ask (live questions on the demo database through the Groq model). Theme in `.streamlit/config.toml`. |
 | `uvicorn claimssql.api.main:app` | P7 | The HTTP API: `GET /health`, `GET /schema`, `POST /ask`. |
 | `python scripts/make_space_bundle.py` | P7 | Collects the Hugging Face Space's files into `dist/space/` (see [docs/DEPLOY.md](docs/DEPLOY.md)). |
 
