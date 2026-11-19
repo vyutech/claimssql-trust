@@ -30,6 +30,11 @@ if "explorer_pick" not in st.session_state:
     st.session_state.explorer_pick = None  # (model, question id) chosen by the button
 
 st.title("Explorer")
+st.markdown(
+    "**How to read this page:** Pick a model and a question. Gold = the correct answer. "
+    "C0 = the model's answer with no checks; C4 = with all three checks. :green[Green] = "
+    "correct, :red[red] = wrong, :orange[amber] = refused (with the reason)."
+)
 st.caption(
     "Every benchmark question, as each model answered it without checks (C0) and with "
     "all checks (C4). Gold answers are computed on the full database."
@@ -61,7 +66,7 @@ with st.container(horizontal=True, vertical_alignment="bottom"):
                             key="groups", placeholder="All groups")  # fmt: skip
     tag = st.selectbox("Trap tag", tags, index=None, key="tag", placeholder="Any tag")
     saved_only = st.toggle(
-        "Checks saved it",
+        "Only cases where the checks prevented a harmful answer",
         key="saved_only",
         help="Only cases where C0 gave a harmful answer and C4 refused.",
     )
@@ -74,10 +79,11 @@ with st.container(horizontal=True, vertical_alignment="bottom"):
     )
 
 choices = filter_rows(rows, model, groups, tag, saved_only)
-saved = sum(saved_by_checks(r) for r in filter_rows(rows, model))
+model_rows = filter_rows(rows, model)
+saved = sum(saved_by_checks(r) for r in model_rows)
 st.caption(
-    f"{len(choices)} matching questions. For {labels[model]}, the checks turned "
-    f"{saved} harmful C0 answers into refusals."
+    f"{len(choices)} matching questions. For {labels[model]}, across all {len(model_rows)} "
+    f"questions, the checks turned {saved} harmful C0 answers into refusals."
 )
 if not choices:
     st.info("No question matches these filters.", icon=":material/filter_alt_off:")
