@@ -95,19 +95,90 @@ if walk:
         st.markdown("All checks (C4)  \n:orange-badge[:material/do_not_disturb_on: Refused]")
         st.caption(reason_text(walk["reason_code"]))
 
+
+# ------------------------------------------------------------- glossary ----
+# Compact term cards in a two-column grid, grouped under three headings. The coloured
+# dots follow the app's meaning: red = harmful, amber = refused, green = correct.
+def term(key: str, name: str, text: str, example: str = "", dot: str = "") -> None:
+    with st.container(key=f"term_{key}", height="stretch"):
+        st.markdown(f":{dot}[●] **{name}**" if dot else f"**{name}**")
+        st.markdown(text)
+        if example:
+            st.caption(example)
+
+
+def grid(terms: list[tuple]) -> None:
+    columns = st.columns(2, gap="small")
+    for position, args in enumerate(terms):
+        with columns[position % 2]:
+            term(*args)
+
+
+v1 = examples.get("v1")
+invented = ", ".join(v1["verification"]["unknown_columns"]) if v1 else ""
+coverage = [m["coverage_c4"] for m in load_json("results.json").get("models", [])]
+
 st.space("small")
 with st.expander("Glossary", icon=":material/menu_book:"):
-    st.markdown(
-        "- **Hallucination**: the model produces SQL or an answer that looks plausible but "
-        "is wrong, such as an invented column or a misread code.\n"
-        "- **Abstention (refusal)**: the system declines to answer and gives a reason, "
-        "instead of guessing.\n"
-        "- **C0 to C4**: five ways of running the same model. C0 must always answer; C1 "
-        "lets the model refuse; C2 adds check V1; C3 adds V2; C4 adds V3.\n"
-        "- **Harmful answer**: a wrong answer to a question that has one, or any answer to a "
-        "question the data cannot answer.\n"
-        "- **Reliability Score (RS₁₀)**: +1 for a right answer or a justified refusal, 0 for "
-        "an unneeded refusal, −10 for a harmful answer; times 100 and averaged. A wrong "
-        "answer costs ten right ones.\n"
-        "- **Coverage**: the share of questions the system answers at all."
-    )
+    st.caption("THE PROBLEM")
+    grid([
+        ("hallucination", "Hallucination",
+         "The model makes something up, such as a column or a code meaning, that looks "
+         "real but is not.",
+         f"Example: a column called {invented}, which does not exist." if invented else ""),
+        ("harmful", "Harmful answer",
+         "A wrong answer to a real question, or any answer to a trap question.",
+         "Example: 112,754 members when the right number is 35,857.", "red"),
+        ("trap", "Trap question (T1–T4)",
+         "A question the data cannot answer, so the right response is to refuse.",
+         "T1 missing concept · T2 not in the data · T3 ambiguous · T4 not a database "
+         "question"),
+    ])  # fmt: skip
+
+    st.caption("WHAT THE SYSTEM DOES")
+    grid([
+        ("text_to_sql", "Text-to-SQL",
+         "Turning a question in plain English into a database query that answers it."),
+        ("abstention", "Abstention (refusal)",
+         "The system says “I can't answer that” and gives the reason, instead of guessing.",
+         "Reasons: the model refused, a name does not exist, the query fails, or the "
+         "attempts disagree.", "orange"),
+        ("agreement", "Self-consistency (agreement)",
+         "The model answers 5 more times; if the results do not match, the answer is not "
+         "trusted.",
+         "Agreement = the share of attempts that gave the most common result."),
+    ])  # fmt: skip
+
+    st.caption("HOW IT'S MEASURED")
+    grid([
+        ("gold", "Gold answer",
+         "The correct result, from a query the author wrote and checked by running it.",
+         "", "green"),
+        ("coverage", "Coverage",
+         "The share of questions the system answers instead of refusing.",
+         f"With all checks: {min(coverage):.0%}–{max(coverage):.0%} of test questions."
+         if coverage else ""),
+    ])  # fmt: skip
+    with st.container(key="term_ladder"):
+        st.markdown("**C0–C4: five ways to run the same model**")
+        st.markdown(
+            ":gray-badge[C0 · no checks] → :blue-badge[C1 · may refuse] → "
+            ":blue-badge[C2 · + V1 names exist] → :blue-badge[C3 · + V2 query runs] → "
+            ":blue-badge[C4 · + V3 attempts agree]"
+        )
+        st.caption("Each step keeps everything before it and adds one more check.")
+    with st.container(key="term_rs"):
+        st.markdown("**Reliability Score (RS₁₀)**")
+        st.markdown(
+            "Rewards right answers and safe refusals, and punishes a harmful answer ten "
+            "times as hard. Worked example with 10 questions:"
+        )
+        st.markdown(
+            "| Outcome | Questions | Points |\n|---|---:|---:|\n"
+            "| Right answer | 6 | :green[+6] |\n"
+            "| Justified refusal | 2 | :orange[+2] |\n"
+            "| Unneeded refusal | 1 | 0 |\n"
+            "| Wrong answer | 1 | :red[−10] |"
+        )
+        st.markdown("(6 + 2 + 0 − 10) / 10 × 100 = **−20**")
+        st.caption("One wrong answer cancels out eight good ones.")

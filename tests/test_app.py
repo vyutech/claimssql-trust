@@ -250,6 +250,23 @@ def test_how_it_works_page(app_data):
     assert ":red-badge[Returns 112,754]" in page and ":green-badge[35,857]" in page
     assert "Flags are 1 = yes, 2 = no." in page
     assert at.expander[-1].label == "Glossary"
+    glossary = at.expander[-1]
+    headings = [c.value for c in glossary.caption]
+    assert headings[0] == "THE PROBLEM" and "WHAT THE SYSTEM DOES" in headings
+    assert "HOW IT'S MEASURED" in headings
+    terms = " | ".join(m.value for m in glossary.markdown)
+    for name in ("Hallucination", "Trap question (T1–T4)", "Text-to-SQL",
+                 "Self-consistency (agreement)", "Coverage", "Reliability Score (RS₁₀)"):
+        assert f"**{name}**" in terms, name
+    # Colour dots: red = harmful, amber = refused, green = correct.
+    assert ":red[●] **Harmful answer**" in terms
+    assert ":orange[●] **Abstention (refusal)**" in terms
+    assert ":green[●] **Gold answer**" in terms
+    assert ":gray-badge[C0 · no checks] → :blue-badge[C1 · may refuse]" in terms
+    assert ":blue-badge[C4 · + V3 attempts agree]" in terms
+    assert "(6 + 2 + 0 − 10) / 10 × 100 = **−20**" in terms
+    assert "One wrong answer cancels out eight good ones." in headings
+    assert "With all checks: 30%–30% of test questions." in headings  # from results.json
 
 
 def test_results_page(app_data):

@@ -59,6 +59,14 @@ CSS = """
   border-radius: 16px;
   padding: 1.2rem 1.3rem;
 }
+/* Glossary term cards: smaller and tighter than the step cards. */
+[class*="st-key-term"] {
+  background: #141917;
+  border: 1px solid #232B28;
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  gap: 0.25rem;
+}
 </style>
 """
 
