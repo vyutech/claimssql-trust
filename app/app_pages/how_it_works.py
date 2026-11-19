@@ -97,8 +97,15 @@ if walk:
 
 
 # ------------------------------------------------------------- glossary ----
-# Compact term cards in a two-column grid, grouped under three headings. The coloured
-# dots follow the app's meaning: red = harmful, amber = refused, green = correct.
+# Compact term cards, three per row, grouped under three headings. The coloured dots
+# follow the app's meaning: red = harmful, amber = refused, green = correct.
+def heading(key: str, icon: str, text: str) -> None:
+    """A group heading: green, bold, with a thin green bar (.st-key-ghead_* CSS)."""
+    with st.container(key=f"ghead_{key}"):
+        # A bold paragraph sized by the CSS (a heading would add its own spacing).
+        st.markdown(f":green[**{icon} {text}**]")
+
+
 def term(key: str, name: str, text: str, example: str = "", dot: str = "") -> None:
     with st.container(key=f"term_{key}", height="stretch"):
         st.markdown(f":{dot}[●] **{name}**" if dot else f"**{name}**")
@@ -107,11 +114,33 @@ def term(key: str, name: str, text: str, example: str = "", dot: str = "") -> No
             st.caption(example)
 
 
-def grid(terms: list[tuple]) -> None:
-    columns = st.columns(2, gap="small")
-    for position, args in enumerate(terms):
-        with columns[position % 2]:
-            term(*args)
+def rs_card() -> None:
+    with st.container(key="term_rs", height="stretch"):
+        st.markdown("**Reliability Score (RS₁₀)**")
+        st.markdown(
+            "Rewards right answers and safe refusals, and punishes a harmful answer ten "
+            "times as hard. Example with 10 questions:"
+        )
+        st.markdown(
+            "| Outcome | Qs | Points |\n|---|---:|---:|\n"
+            "| Right answer | 6 | :green[+6] |\n"
+            "| Justified refusal | 2 | :orange[+2] |\n"
+            "| Unneeded refusal | 1 | 0 |\n"
+            "| Wrong answer | 1 | :red[−10] |"
+        )
+        st.markdown("(6 + 2 + 0 − 10) / 10 × 100 = **−20**")
+        st.caption("One wrong answer cancels out eight good ones.")
+
+
+def row(cards: list) -> None:
+    """Equal-width columns; height="stretch" cards make every card in the row as tall
+    as the tallest. A card is the arguments for term(), or a function that draws one."""
+    for column, card in zip(st.columns(3, gap="small"), cards, strict=True):
+        with column:
+            if callable(card):
+                card()
+            else:
+                term(*card)
 
 
 v1 = examples.get("v1")
@@ -120,8 +149,8 @@ coverage = [m["coverage_c4"] for m in load_json("results.json").get("models", []
 
 st.space("small")
 with st.expander("Glossary", icon=":material/menu_book:"):
-    st.caption("THE PROBLEM")
-    grid([
+    heading("problem", ":material/report:", "The problem")
+    row([
         ("hallucination", "Hallucination",
          "The model makes something up, such as a column or a code meaning, that looks "
          "real but is not.",
@@ -135,8 +164,8 @@ with st.expander("Glossary", icon=":material/menu_book:"):
          "question"),
     ])  # fmt: skip
 
-    st.caption("WHAT THE SYSTEM DOES")
-    grid([
+    heading("system", ":material/settings_suggest:", "What the system does")
+    row([
         ("text_to_sql", "Text-to-SQL",
          "Turning a question in plain English into a database query that answers it."),
         ("abstention", "Abstention (refusal)",
@@ -149,16 +178,7 @@ with st.expander("Glossary", icon=":material/menu_book:"):
          "Agreement = the share of attempts that gave the most common result."),
     ])  # fmt: skip
 
-    st.caption("HOW IT'S MEASURED")
-    grid([
-        ("gold", "Gold answer",
-         "The correct result, from a query the author wrote and checked by running it.",
-         "", "green"),
-        ("coverage", "Coverage",
-         "The share of questions the system answers instead of refusing.",
-         f"With all checks: {min(coverage):.0%}–{max(coverage):.0%} of test questions."
-         if coverage else ""),
-    ])  # fmt: skip
+    heading("measured", ":material/straighten:", "How it's measured")
     with st.container(key="term_ladder"):
         st.markdown("**C0–C4: five ways to run the same model**")
         st.markdown(
@@ -167,18 +187,13 @@ with st.expander("Glossary", icon=":material/menu_book:"):
             ":blue-badge[C4 · + V3 attempts agree]"
         )
         st.caption("Each step keeps everything before it and adds one more check.")
-    with st.container(key="term_rs"):
-        st.markdown("**Reliability Score (RS₁₀)**")
-        st.markdown(
-            "Rewards right answers and safe refusals, and punishes a harmful answer ten "
-            "times as hard. Worked example with 10 questions:"
-        )
-        st.markdown(
-            "| Outcome | Questions | Points |\n|---|---:|---:|\n"
-            "| Right answer | 6 | :green[+6] |\n"
-            "| Justified refusal | 2 | :orange[+2] |\n"
-            "| Unneeded refusal | 1 | 0 |\n"
-            "| Wrong answer | 1 | :red[−10] |"
-        )
-        st.markdown("(6 + 2 + 0 − 10) / 10 × 100 = **−20**")
-        st.caption("One wrong answer cancels out eight good ones.")
+    row([
+        ("gold", "Gold answer",
+         "The correct result, from a query the author wrote and checked by running it.",
+         "", "green"),
+        rs_card,
+        ("coverage", "Coverage",
+         "The share of questions the system answers instead of refusing.",
+         f"With all checks: {min(coverage):.0%}–{max(coverage):.0%} of test questions."
+         if coverage else ""),
+    ])  # fmt: skip

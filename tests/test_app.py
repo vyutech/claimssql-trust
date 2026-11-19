@@ -251,10 +251,21 @@ def test_how_it_works_page(app_data):
     assert "Flags are 1 = yes, 2 = no." in page
     assert at.expander[-1].label == "Glossary"
     glossary = at.expander[-1]
-    headings = [c.value for c in glossary.caption]
-    assert headings[0] == "THE PROBLEM" and "WHAT THE SYSTEM DOES" in headings
-    assert "HOW IT'S MEASURED" in headings
+    headings = [m.value for m in glossary.markdown if m.value.startswith(":green[**")]
+    assert headings == [":green[**:material/report: The problem**]",
+                        ":green[**:material/settings_suggest: What the system does**]",
+                        ":green[**:material/straighten: How it's measured**]"]
+    # Three rows of three equal columns: 3 + 3 terms, then Gold / RS / Coverage
+    # (the C0-C4 ladder is a full-width row above them).
+    assert len(glossary.columns) == 9
+    measured = [c.markdown[0].value for c in glossary.columns[6:]]
+    assert measured == [":green[●] **Gold answer**", "**Reliability Score (RS₁₀)**",
+                        "**Coverage**"]
+    ladder = next(i for i, m in enumerate(glossary.markdown) if "C0–C4" in m.value)
+    gold = next(i for i, m in enumerate(glossary.markdown) if "Gold answer" in m.value)
+    assert ladder < gold  # ladder first, then the three cards
     terms = " | ".join(m.value for m in glossary.markdown)
+    notes = [c.value for c in glossary.caption]
     for name in ("Hallucination", "Trap question (T1–T4)", "Text-to-SQL",
                  "Self-consistency (agreement)", "Coverage", "Reliability Score (RS₁₀)"):
         assert f"**{name}**" in terms, name
@@ -265,8 +276,8 @@ def test_how_it_works_page(app_data):
     assert ":gray-badge[C0 · no checks] → :blue-badge[C1 · may refuse]" in terms
     assert ":blue-badge[C4 · + V3 attempts agree]" in terms
     assert "(6 + 2 + 0 − 10) / 10 × 100 = **−20**" in terms
-    assert "One wrong answer cancels out eight good ones." in headings
-    assert "With all checks: 30%–30% of test questions." in headings  # from results.json
+    assert "One wrong answer cancels out eight good ones." in notes
+    assert "With all checks: 30%–30% of test questions." in notes  # from results.json
 
 
 def test_results_page(app_data):

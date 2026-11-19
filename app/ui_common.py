@@ -59,6 +59,15 @@ CSS = """
   border-radius: 16px;
   padding: 1.2rem 1.3rem;
 }
+/* Glossary group headings: thin green bar on the left, space above each group. */
+[class*="st-key-ghead"] {
+  border-left: 3px solid #22C55E;
+  padding-left: 0.75rem;
+  margin-top: 1.25rem;
+}
+[class*="st-key-ghead"] p { font-size: 1.2rem; line-height: 1.6; margin: 0; }
+/* Streamlit gives markdown a -16px bottom margin, which would cut the bar short. */
+[class*="st-key-ghead"] [data-testid="stMarkdownContainer"] { margin-bottom: 0; }
 /* Glossary term cards: smaller and tighter than the step cards. */
 [class*="st-key-term"] {
   background: #141917;
