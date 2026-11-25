@@ -29,7 +29,7 @@ def use_sample(text: str) -> None:
 
 samples = load_json("samples.json")
 if samples:
-    st.markdown("**Try a question from the benchmark**")
+    st.markdown("**Try an example question**")
     # Same colour meaning as everywhere: green = should answer, amber = should refuse.
     icons = {"Should answer": ":green[:material/check_circle:]",
              "Tricky (trap tags)": ":violet[:material/warning:]",

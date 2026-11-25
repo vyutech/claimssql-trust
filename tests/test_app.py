@@ -103,12 +103,26 @@ def test_sample_questions_use_dev_only_and_the_three_groups():
     by_id = {q["id"]: q for q in questions}
     for picked in samples.values():
         for sample in picked:
+            if sample["group"] == "demo":  # an owner's demo question, not in the benchmark
+                continue
             original = by_id[sample["id"]]
             assert original["split"] == "dev"  # no test question is exposed
             assert sample["question"] == original["question"]  # owner's wording, unchanged
-    assert [s["group"] for s in samples["Should refuse"]] == ["T1", "T2", "T3", "T4"]
+    refuse = samples["Should refuse"]
+    assert [s["question"] for s in refuse] == list(ex.REFUSE_SAMPLES)
+    assert [s["id"] for s in refuse] == ["DEMO-1", "DEMO-2", "T4-007", "DEMO-4"]
+    shown = {s["question"] for picked in samples.values() for s in picked}
+    assert "How many members were enrolled in 2007?" not in shown
+    assert "What is the average cost per member?" not in shown
     assert all(s["group"] == "easy" for s in samples["Should answer"])
     assert all(s["trap_tags"] for s in samples["Tricky (trap tags)"])
+
+
+def test_refuse_samples_never_show_a_test_question():
+    question = {"id": "T9-1", "group": "T1", "split": "test",
+                "question": ex.REFUSE_SAMPLES[0]}  # fmt: skip
+    with pytest.raises(ValueError, match="test question"):
+        ex.refuse_samples([question])
 
 
 def test_results_summary_from_the_report_tables():
@@ -358,6 +372,7 @@ def test_try_it_page_shows_samples_without_calling_a_model(app_data):
     assert at.title[0].value == "Try it yourself"
     labels = [b.label for b in at.button]
     assert "sample answerable" in labels and "sample refusable" in labels
+    assert "**Try an example question**" in text(at)  # not all examples are benchmark ones
     assert at.session_state["answer"] is None  # nothing ran on its own
 
 
