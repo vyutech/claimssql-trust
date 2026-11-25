@@ -263,6 +263,8 @@ def test_home_page(app_data):
     assert "knows when to say" in page
     assert "−75%" in page  # best cut: a 8 → 2 (b 6 → 3 is only −50%)
     assert "1 · Ask" in page and "2 · Check" in page and "3 · Answer or refuse" in page
+    # The three steps come straight after the hero, then the stat cards.
+    assert page.index("1 · Ask") < page.index("−75%")
     labels = [b.label for b in at.button]
     assert "See how it works" in labels and "Try it yourself" in labels
 
