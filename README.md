@@ -4,7 +4,7 @@ Measures how often small open LLMs hallucinate SQL on healthcare claims data
 (CMS DE-SynPUF Sample 1), and whether a verification layer lets them abstain
 instead of returning confident wrong answers.
 
-Status: **P7 — demo product** (Streamlit app, API, Hugging Face deployment).
+Status: **P7 — demo product** (Streamlit app, API, Streamlit Community Cloud deployment).
 
 ## Benchmark
 
@@ -163,7 +163,7 @@ figures use grey levels, hatching and markers, so they print in black and white.
 | `python scripts/build_demo_db.py` | P7 | Builds `data/demo.duckdb` (5,000 fixed random beneficiaries with all their claims) and `app_data/` (explorer rows, results and chart data, real check examples, sample questions) from `results/runs/full.jsonl` and `results/tables/`. |
 | `streamlit run app/streamlit_app.py` | P7 | The demo app, six pages in a top bar: Home, How it works (the three checks with real examples, one question followed through), Results (RQ1–RQ4 findings and interactive charts), Explorer (every benchmark question with C0 and C4 side by side), Try it (live questions on the demo database through the Groq model) and About. Dark theme in `.streamlit/config.toml`; green = correct, amber = refused, red = wrong. |
 | `uvicorn claimssql.api.main:app` | P7 | The HTTP API: `GET /health`, `GET /schema`, `POST /ask`. |
-| `python scripts/make_space_bundle.py` | P7 | Collects the Hugging Face Space's files into `dist/space/` (see [docs/DEPLOY.md](docs/DEPLOY.md)). |
+| `python scripts/make_space_bundle.py` | P7 | Collects the deployed demo's files into `dist/space/` (see [docs/DEPLOY.md](docs/DEPLOY.md)). |
 
 ## Repo layout
 
@@ -191,7 +191,7 @@ src/claimssql/
   api/              FastAPI service
 app/                streamlit_app.py (demo app)
 app_data/           data files for the app (generated, git-ignored)
-deploy/             Space requirements, README header and Dockerfile
+deploy/             requirements and README header for the deployed bundle (+ unused Dockerfile)
 notebooks/          kaggle_generate.ipynb (generation on Kaggle), analysis.ipynb (figures)
 results/            runs/, tables/, figures/ (cache/ is git-ignored)
 tests/

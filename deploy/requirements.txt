@@ -1,5 +1,5 @@
-# Packages for the deployed demo (Hugging Face Space). The project code itself is
-# copied into the Space and imported from src/, so it is not listed here.
+# Packages for the deployed demo (Streamlit Community Cloud). The project code itself
+# is copied into the bundle and imported from src/, so it is not listed here.
 duckdb>=2.0.0,<3
 sqlglot>=30.31.0,<31
 httpx>=0.28.1,<1

@@ -17,7 +17,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-# Make the package importable without installing it (needed on Hugging Face).
+# Make the package importable without installing it (needed on Streamlit Community Cloud).
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import streamlit as st  # noqa: E402

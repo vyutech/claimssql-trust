@@ -1,4 +1,6 @@
-"""Collect exactly what the Hugging Face Space needs into dist/space/.
+"""Collect exactly what the deployed demo (Streamlit Community Cloud) needs into
+dist/space/. The name, the README header and --sdk are left over from the first
+plan, Hugging Face Spaces; Community Cloud ignores the header (see docs/DEPLOY.md).
 
     app/                     the app: entry point, shared helpers, pages
     .streamlit/config.toml   the app's theme
@@ -8,7 +10,7 @@
     data/demo.duckdb         the 5,000-member demo database
     app_data/                precomputed explorer data, headline results, sample questions
     requirements.txt         from deploy/requirements.txt
-    README.md                the Space header (sdk: streamlit or docker)
+    README.md                short description (with the Hugging Face header)
     Dockerfile               only with --sdk docker
 
 Never included: .env, the full database, results/, the LLM cache, CLAUDE.md.
@@ -98,7 +100,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Wrote {args.out} ({len(files)} files, {size:.1f} MB, sdk: {args.sdk})")
     for name in ("data/demo.duckdb", "app_data/explorer.jsonl", "app_data/results.json"):
         print(f"  {name}: {(args.out / name).stat().st_size / 1e6:.1f} MB")
-    print("Next: follow docs/DEPLOY.md to upload it to the Space.")
+    print("Next: follow docs/DEPLOY.md to push it to the demo repository.")
     return 0
 
 
